@@ -36,3 +36,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # editor/tool configs
 .cursor
 .claude
+
+# test generated data
+test/fixtures/
+test/results/
