@@ -1,111 +1,88 @@
----
-description: Use Bun instead of Node.js, npm, pnpm, or vite.
-globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
-alwaysApply: false
----
+# solana-parser-v2
 
-Default to using Bun instead of Node.js.
+Real-time Solana swap parser. Streams transactions via Helius WebSocket, parses swaps from 6 DEX protocols using custom IDL-level instruction decoding. Zero external dependencies beyond Bun.
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Use `bunx <package> <command>` instead of `npx <package> <command>`
-- Bun automatically loads .env, so don't use dotenv.
+## Commands
 
-## APIs
+- `bun run index.ts` — Run the swap stream
+- `bun run bench.ts` — Benchmark parser (requires `RPC_URL` in `.env`)
+- `bun test` — Run tests
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+## Runtime
 
-## Testing
+Use Bun exclusively. No Node.js, npm, vite, or external packages for things Bun provides natively.
 
-Use `bun test` to run tests.
+- `bun <file>` not `node`/`ts-node`
+- `bun install` not `npm`/`yarn`/`pnpm`
+- `bun test` not `jest`/`vitest`
+- Bun auto-loads `.env` — no dotenv
 
-```ts#index.test.ts
-import { test, expect } from "bun:test";
+## Architecture
 
-test("hello world", () => {
-  expect(1).toBe(1);
-});
+### Data flow
+
+```
+Helius WebSocket → stream.ts → normalize.ts → parser.ts → ParsedSwap
+                                    ↓
+                             deserialize.ts (for base58/base64)
 ```
 
-## Frontend
+### Parser pipeline (parser.ts)
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+1. `normalizeTransactionData()` — Convert any encoding to `TransactionMessage`
+2. `buildFullAccountKeys()` — Merge static + loaded addresses
+3. `detectProtocols()` — Scan instructions for known program IDs
+4. `tryIdlParse()` — Decode instruction data via discriminator matching
+5. `findSwapUser()` — Identify real swapper from token balance heuristics
+6. `computeTokenChanges()` + `computeSolChange()` + `mergeChanges()` — Compute deltas
+7. Cross-validate IDL result against balance diffs, extract pool address
 
-Server:
+### IDL system (src/idl/)
 
-```ts#index.ts
-import index from "./index.html"
-
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
-```
-
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
-
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
-
-With the following `frontend.tsx`:
-
-```tsx#frontend.tsx
-import React from "react";
-import { createRoot } from "react-dom/client";
-
-// import .css files directly and it works
-import './index.css';
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
+Each protocol parser implements `ProgramParser`:
+```ts
+interface ProgramParser {
+  programId: string
+  parseInstruction(data: Uint8Array, accounts: string[], ctx?: ParseContext): RawSwap | null
 }
-
-root.render(<Frontend />);
 ```
 
-Then, run index.ts
+Parsers use **hardcoded 8-byte discriminators** from `sha256("global:<method>")`. No Anchor dependency — raw byte matching via `matchDiscriminator()`.
 
-```sh
-bun --hot ./index.ts
-```
+Registry (`registry.ts`) maps program ID → parser. `tryParseInstruction()` decodes base58 data and dispatches.
 
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+### Supported protocols
+
+| Protocol | Program ID | File |
+|---|---|---|
+| PumpFun | `6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P` | `pumpfun.ts` |
+| PumpSwap | `pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA` | `pumpswap.ts` |
+| Raydium CPMM | `CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C` | `raydium-cpmm.ts` |
+| Raydium LaunchLab | `LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj` | `raydium-launchlab.ts` |
+| Meteora DBC | `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` | `meteora-dbc.ts` |
+| Meteora DAMMv2 | `cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG` | `meteora-dammv2.ts` |
+
+### Key types
+
+- `ParsedSwap` — Final parser output (signature, user, amounts, pool, swapType)
+- `RawSwap` — IDL-level result (type, tokenFrom/To, amountFrom/To, signer)
+- `SwapType` — Union of `{protocol}-buy` | `{protocol}-sell` strings
+- `Protocol` — Enum: PumpFun, PumpSwap, RaydiumCPMM, RaydiumLaunchLab, MeteoraDBC, MeteoraDAMMv2
+- `TokenChange` — `{ mint, rawDelta: bigint, decimals }`
+
+### Key constants (constants.ts)
+
+- `PROGRAM_ID_TO_PROTOCOL` — Maps program ID strings to `Protocol` enum
+- `POOL_ACCOUNT_INDEX` — Which account index holds the pool address per protocol
+- `SOL_MINT` / `WSOL_MINT` — Native SOL and wrapped SOL mint addresses
+
+## Conventions
+
+- All amounts are computed from pre/post token balance diffs, not instruction args
+- WSOL is normalized to SOL_MINT in output
+- Fee payer SOL delta is adjusted by adding tx fee back (isolates swap movement)
+- IDL results are cross-validated against balance diffs before setting `swapType`
+- Pool address extraction uses fixed account indices per protocol
+- Meteora DBC and DAMMv2 share a factory (`meteora-common.ts`) — only account layout differs
+- User detection prefers IDL signer, falls back to balance heuristic
+- Transaction deserialization handles versioned (v0) and legacy formats
