@@ -1,97 +1,209 @@
-# solana-parser-v2
+# solana-swap-parser
 
-Real-time Solana swap parser that streams transactions from Helius WebSocket and extracts swap data from 6 DEX protocols. Zero dependencies beyond Bun — no `@solana/web3.js`, no Anchor, no bs58 packages.
+Zero-dependency Solana DEX swap parser for Bun. Pass in a transaction, get back structured swap data. Supports 6 protocols out of the box.
 
-## Supported protocols
-
-| Protocol | Program ID | Buy/Sell detection |
-|---|---|---|
-| PumpFun | `6EF8rr...` | `buy`, `sell`, `buy_exact_sol_in` |
-| PumpSwap | `pAMMBa...` | `buy`, `sell`, `buy_exact_quote_in` |
-| Raydium CPMM | `CPMMoo...` | `swap_base_input`, `swap_base_output` |
-| Raydium LaunchLab | `LanMV9...` | `buy_exact_in/out`, `sell_exact_in/out` |
-| Meteora DBC | `dbcij3...` | `swap`, `swap2` (ExactIn/ExactOut) |
-| Meteora DAMMv2 | `cpamDP...` | `swap`, `swap2` (ExactIn/ExactOut) |
-
-## How it works
-
-1. **Stream** — Subscribes to Helius Atlas WebSocket for real-time confirmed transactions that touch any supported program
-2. **Normalize** — Handles `jsonParsed`, `json`, `base58`, and `base64` encoded transactions, deserializing raw bytes when needed
-3. **Detect** — Scans top-level and inner instructions for known program IDs
-4. **IDL parse** — Decodes instruction data using hardcoded discriminators (sha256 of Anchor method names) to determine swap direction and extract amounts
-5. **User identification** — Finds the real swapper via token balance heuristics (not just the fee payer, which is often a relay/bot)
-6. **Token deltas** — Computes pre/post token balance diffs, merges WSOL with native SOL, and identifies input/output sides
-7. **Enrich** — Cross-validates IDL results against balance diffs, extracts pool address from known account indices
-
-## Setup
+## Install
 
 ```bash
-bun install
+bun add solana-swap-parser
 ```
 
-Create a `.env` file with your Helius RPC URL:
-
-```
-RPC_URL=https://mainnet.helius-rpc.com/?api-key=YOUR_KEY
-```
-
-## Usage
-
-```bash
-# Stream and parse swaps in real-time
-bun run index.ts
-
-# Benchmark parser across 3 encoding formats (10k iterations)
-bun run bench.ts
-```
-
-### Output format
-
-```
-[PumpFun] 5Kx8Qr... pumpfun-buy 1.5000 SOL → 1,234,567 CJaf3U... | pool: 7xKXtg... | fee: 0.000005 SOL | <signature>
-```
-
-### ParsedSwap type
+## Quick start
 
 ```ts
-interface ParsedSwap {
-  signature: string;
-  slot: number;
-  user: string;           // actual swapper, not necessarily fee payer
-  protocols: Protocol[];
-  inputMint: string;
-  inputAmount: number;
-  outputMint: string;
-  outputAmount: number;
-  pool?: string;           // pool/AMM address when extractable
-  swapType?: SwapType;     // e.g. "pumpfun-buy", "raydium-cpmm-sell"
-  fee: number;             // transaction fee in lamports
-  timestamp: number;
+import { parseSwap } from 'solana-swap-parser'
+
+const result = parseSwap({
+  transaction: txResult.transaction,
+  meta: txResult.meta,
+  signature: 'your-tx-signature',
+  slot: 123456,
+})
+
+if (result) {
+  console.log(result.swapType)         // "pumpfun-buy"
+  console.log(result.inputAmountDecimal) // "1.5"
+  console.log(result.outputMint)        // "TknMint..."
 }
 ```
 
-## Project structure
+## Supported protocols
 
+| Protocol | Program ID | File |
+|---|---|---|
+| PumpFun | `6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P` | `pumpfun.ts` |
+| PumpSwap | `pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA` | `pumpswap.ts` |
+| Raydium CPMM | `CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C` | `raydium-cpmm.ts` |
+| Raydium LaunchLab | `LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj` | `raydium-launchlab.ts` |
+| Meteora DBC | `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` | `meteora-dbc.ts` |
+| Meteora DAMMv2 | `cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG` | `meteora-dammv2.ts` |
+
+## API Reference
+
+### `parseSwap(input, options?)` → `ParsedSwap | null`
+
+Validated convenience function. Validates input with Zod schemas, then parses. Returns `null` if the transaction is not a swap. Throws `ValidationError` on malformed input.
+
+```ts
+import { parseSwap } from 'solana-swap-parser'
+
+const swap = parseSwap({
+  transaction: txData,   // TransactionData object or [encoded, encoding] tuple
+  meta: txMeta,          // TransactionMeta from RPC
+  signature: 'sig...',   // optional, defaults to ""
+  slot: 12345,           // optional, defaults to 0
+  blockTime: 1700000000, // optional
+})
 ```
-index.ts                    # CLI entry point — streams and logs swaps
-bench.ts                    # Benchmark across jsonParsed/json/base64
-src/
-  types.ts                  # Helius WebSocket + parser output types
-  constants.ts              # Program IDs, protocol enum, SOL mints
-  parser.ts                 # Main parser: detect, identify user, compute deltas
-  stream.ts                 # Helius WebSocket subscription + reconnect
-  normalize.ts              # Unified format from any encoding
-  deserialize.ts            # Raw transaction byte deserialization
-  idl/
-    codec.ts                # Base58/64, compact u16, discriminator matching
-    types.ts                # RawSwap, ParseContext, ProgramParser interface
-    registry.ts             # Parser registry — dispatches by program ID
-    programs/
-      pumpfun.ts            # PumpFun parser
-      pumpswap.ts           # PumpSwap parser
-      raydium-cpmm.ts       # Raydium CPMM parser
-      raydium-launchlab.ts  # Raydium LaunchLab parser
-      meteora-common.ts     # Shared Meteora parser factory
-      meteora-dbc.ts        # Meteora DBC config
-      meteora-dammv2.ts     # Meteora DAMMv2 config
+
+### `parseSwapDetailed(input, options?)` → `ParseOutcome`
+
+Same validation as `parseSwap`, but returns a detailed outcome with classification:
+
+```ts
+import { parseSwapDetailed } from 'solana-swap-parser'
+
+const outcome = parseSwapDetailed({ transaction, meta })
+
+switch (outcome.kind) {
+  case 'swap':        // outcome.swap is a ParsedSwap
+  case 'not_swap':    // not a swap (outcome.code explains why)
+  case 'unsupported': // encoding or version not supported
+  case 'error':       // internal error (outcome.errorMessage)
+}
 ```
+
+### `parseTransaction(notification, options?)` → `ParsedSwap | null`
+
+Core parsing function — no input validation. Use when you trust the input (e.g., from your own WebSocket stream). Takes a full `TransactionNotification` object.
+
+```ts
+import { parseTransaction } from 'solana-swap-parser'
+
+const swap = parseTransaction({
+  signature: 'sig...',
+  slot: 12345,
+  transaction: { meta, transaction: txData },
+})
+```
+
+### `ParserOptions`
+
+Optional callbacks for resolving address lookup tables and token programs:
+
+```ts
+interface ParserOptions {
+  resolveAddressTableLookups?: (lookups) => AddressLookupResolution | null
+  warmAddressLookupTables?: (tableAccounts: string[]) => Promise<void>
+  resolveMintTokenProgram?: (mint: string) => TokenProgramKind
+  resolveToken2022TransferFeeBps?: (mint: string) => number | null
+  onInternalError?: (error: unknown) => void
+  onResolverError?: (ctx: { tableAccount?: string; error: unknown }) => void
+}
+```
+
+### `createRpcBackedParserOptions(config)`
+
+Factory that creates `ParserOptions` with an RPC-backed address lookup table resolver. Handles caching, retries, and background refresh.
+
+```ts
+import { createRpcBackedParserOptions } from 'solana-swap-parser'
+
+const options = createRpcBackedParserOptions({
+  rpcUrl: process.env.RPC_URL!,
+  cacheTtlMs: 300_000,       // optional, default 5min
+  maxCacheEntries: 20_000,   // optional
+  requestTimeoutMs: 5_000,   // optional
+  retries: 2,                // optional
+})
+```
+
+## Output types
+
+### `ParsedSwap`
+
+```ts
+interface ParsedSwap {
+  signature: string
+  slot: number
+  blockTime?: number
+  user: string              // actual swapper (not always fee payer)
+  feePayer: string
+  protocols: Protocol[]
+  hopCount?: number
+  routeType?: 'single-hop' | 'multi-hop'
+  inputMint: string
+  inputRaw: string          // exact integer in base units
+  inputDecimals: number
+  inputAmountDecimal: string
+  inputAmountNumber?: number
+  inputTokenProgram?: TokenProgramKind
+  outputMint: string
+  outputRaw: string
+  outputDecimals: number
+  outputAmountDecimal: string
+  outputAmountNumber?: number
+  outputTokenProgram?: TokenProgramKind
+  pool?: string
+  swapType?: SwapType       // e.g. "pumpfun-buy", "raydium-cpmm-sell"
+  confidence: 'high' | 'medium' | 'low'
+  warnings: WarningCode[]
+  fee: number               // transaction fee in lamports
+}
+```
+
+### Zod schemas
+
+Exported for consumers who want to validate their own data:
+
+```ts
+import { SwapInputSchema, TransactionMetaSchema, TokenBalanceSchema } from 'solana-swap-parser'
+
+const validated = SwapInputSchema.parse(untrustedData)
+```
+
+## Streaming
+
+Opt-in real-time streaming via Helius WebSocket:
+
+```ts
+import { startStream } from 'solana-swap-parser/stream'
+
+const handle = startStream({
+  parserOptions: options,
+  onSwap: (swap) => console.log(swap),
+  onMetrics: (event) => { /* counters, gauges, timings */ },
+})
+
+// Graceful shutdown
+const result = await handle.stop({ drain: true, timeoutMs: 30_000 })
+```
+
+Requires `RPC_URL` (or `WS_URL`) environment variable.
+
+## How it works
+
+1. **Normalize** — Accepts `jsonParsed`/`json` objects or `base58`/`base64`/`base64+zstd` encoded tuples, deserializing raw bytes when needed
+2. **Detect** — Scans top-level and inner instructions for known program IDs
+3. **IDL decode** — Matches 8-byte discriminators (`sha256("global:<method>")`) to extract swap direction and amounts
+4. **User identification** — Finds the real swapper via IDL signer or token balance heuristics (not just the fee payer)
+5. **Balance diffs** — Computes pre/post token balance deltas, normalizes WSOL to SOL, and cross-validates against IDL results
+
+## Development
+
+```bash
+bun install
+
+bun test                # run tests
+bun run typecheck       # typescript check
+bun run lint            # biome lint
+bun run format:check    # prettier check
+bun run verify          # all of the above
+
+bun run stream          # live stream (requires RPC_URL)
+bun run bench           # benchmark (requires RPC_URL)
+```
+
+## License
+
+MIT

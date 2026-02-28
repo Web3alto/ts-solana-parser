@@ -1,12 +1,18 @@
-# solana-parser-v2
+# solana-swap-parser
 
-Real-time Solana swap parser. Streams transactions via Helius WebSocket, parses swaps from 6 DEX protocols using custom IDL-level instruction decoding. Zero external dependencies beyond Bun.
+Solana swap parser library. Parses swaps from 6 DEX protocols using custom IDL-level instruction decoding. Zod-validated public API with zero-overhead internal parsing.
 
 ## Commands
 
-- `bun run index.ts` — Run the swap stream
-- `bun run bench.ts` — Benchmark parser (requires `RPC_URL` in `.env`)
 - `bun test` — Run tests
+- `bun run typecheck` — TypeScript check
+- `bun run lint` — Biome lint check
+- `bun run lint:fix` — Biome lint auto-fix
+- `bun run format` — Prettier format
+- `bun run format:check` — Prettier format check
+- `bun run verify` — Run all checks (typecheck + lint + format + test)
+- `bun run stream` — Live swap stream (requires `RPC_URL` in `.env`)
+- `bun run bench` — Benchmark parser (requires `RPC_URL` in `.env`)
 
 ## Runtime
 
@@ -17,23 +23,63 @@ Use Bun exclusively. No Node.js, npm, vite, or external packages for things Bun 
 - `bun test` not `jest`/`vitest`
 - Bun auto-loads `.env` — no dotenv
 
+## Project structure
+
+```
+src/
+  lib.ts                    # Barrel export — public library entry point
+  parse-swap.ts             # Validated convenience API (Zod boundary)
+  schemas.ts                # Zod schemas for input validation
+  parser.ts                 # Core parser: detect, identify user, compute deltas
+  parser/                   # Parser submodules
+    accounts.ts             # Account key resolution, instruction extraction
+    balance.ts              # Token balance diff computation
+    detection.ts            # Protocol detection, pool extraction
+    idl-scoring.ts          # IDL candidate scoring and selection
+    user.ts                 # User identification heuristics
+  types.ts                  # All TypeScript types (readonly output types)
+  constants.ts              # Program IDs, protocol enum, SOL mints
+  errors.ts                 # ParserError, DecodeError, ValidationError
+  normalize.ts              # Unified format from any encoding
+  deserialize.ts            # Raw transaction byte deserialization
+  stream.ts                 # Helius WebSocket subscription + reconnect
+  resolvers.ts              # RPC-backed ALT resolver with cache
+  amount.ts                 # Decimal formatting utilities
+  deque.ts                  # Queue data structure for stream
+  metrics.ts                # Stream metrics types
+  idl/
+    codec.ts                # Base58/64, compact u16, discriminator matching
+    types.ts                # RawSwap, ParseContext, ProgramParser interface
+    registry.ts             # Parser registry — dispatches by program ID
+    programs/               # Per-protocol IDL parsers
+tools/
+  stream-cli.ts             # CLI entry point for live streaming
+  bench.ts                  # Benchmark script
+test/
+  *.test.ts                 # Test files (bun test)
+  helpers.ts                # Shared test utilities
+  scripts/                  # Dev/debug scripts (not tests)
+    lib/                    # Shared script utilities (RPC, Solscan scraper)
+```
+
 ## Architecture
 
-### Data flow
+### Library entry point
 
 ```
-Helius WebSocket → stream.ts → normalize.ts → parser.ts → ParsedSwap
-                                    ↓
-                             deserialize.ts (for base58/base64)
+Consumer → src/lib.ts (barrel) → src/parse-swap.ts (Zod validation) → src/parser.ts (core)
 ```
+
+- `parseSwap()` / `parseSwapDetailed()` — Validated API with Zod schemas at the boundary
+- `parseTransaction()` / `parseTransactionDetailed()` — Core API, no validation overhead
 
 ### Parser pipeline (parser.ts)
 
 1. `normalizeTransactionData()` — Convert any encoding to `TransactionMessage`
 2. `buildFullAccountKeys()` — Merge static + loaded addresses
 3. `detectProtocols()` — Scan instructions for known program IDs
-4. `tryIdlParse()` — Decode instruction data via discriminator matching
-5. `findSwapUser()` — Identify real swapper from token balance heuristics
+4. `collectIdlCandidates()` — Decode instruction data via discriminator matching
+5. `findSwapUser()` — Identify real swapper from IDL signer or balance heuristics
 6. `computeTokenChanges()` + `computeSolChange()` + `mergeChanges()` — Compute deltas
 7. Cross-validate IDL result against balance diffs, extract pool address
 
@@ -64,15 +110,17 @@ Registry (`registry.ts`) maps program ID → parser. `tryParseInstruction()` dec
 
 ### Key types
 
-- `ParsedSwap` — Final parser output (signature, user, amounts, pool, swapType)
+- `ParsedSwap` — Final parser output (readonly, signature, user, amounts, pool, swapType)
+- `ParseOutcome` — Detailed result with kind/code/warnings (readonly)
+- `SwapInput` — Validated convenience API input type
 - `RawSwap` — IDL-level result (type, tokenFrom/To, amountFrom/To, signer)
 - `SwapType` — Union of `{protocol}-buy` | `{protocol}-sell` strings
 - `Protocol` — Enum: PumpFun, PumpSwap, RaydiumCPMM, RaydiumLaunchLab, MeteoraDBC, MeteoraDAMMv2
-- `TokenChange` — `{ mint, rawDelta: bigint, decimals }`
+- `TokenChange` — `{ mint, rawDelta: bigint, decimals }` (readonly)
 
 ### Key constants (constants.ts)
 
-- `PROGRAM_ID_TO_PROTOCOL` — Maps program ID strings to `Protocol` enum
+- `PROGRAM_ID_TO_PROTOCOL` — Maps program ID strings to `Protocol` enum (`as const satisfies`)
 - `POOL_ACCOUNT_INDEX` — Which account index holds the pool address per protocol
 - `SOL_MINT` / `WSOL_MINT` — Native SOL and wrapped SOL mint addresses
 
@@ -86,3 +134,7 @@ Registry (`registry.ts`) maps program ID → parser. `tryParseInstruction()` dec
 - Meteora DBC and DAMMv2 share a factory (`meteora-common.ts`) — only account layout differs
 - User detection prefers IDL signer, falls back to balance heuristic
 - Transaction deserialization handles versioned (v0) and legacy formats
+- Output types (`ParsedSwap`, `ParseOutcome`, `TokenChange`) are readonly
+- Zod validation only at public API boundary (`parseSwap`/`parseSwapDetailed`), not internal paths
+- Biome for linting, Prettier for formatting — run `bun run verify` before committing
+- `exactOptionalPropertyTypes` enabled — optional fields need explicit `| undefined`
