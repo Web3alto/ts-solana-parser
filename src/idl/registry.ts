@@ -1,11 +1,11 @@
 import { decodeBase58 } from './codec.ts'
-import type { ParseContext, ProgramParser, RawSwap } from './types.ts'
+import { meteoraDammv2Parser } from './programs/meteora-dammv2.ts'
+import { meteoraDbcParser } from './programs/meteora-dbc.ts'
 import { pumpfunParser } from './programs/pumpfun.ts'
 import { pumpswapParser } from './programs/pumpswap.ts'
 import { raydiumCpmmParser } from './programs/raydium-cpmm.ts'
 import { raydiumLaunchLabParser } from './programs/raydium-launchlab.ts'
-import { meteoraDbcParser } from './programs/meteora-dbc.ts'
-import { meteoraDammv2Parser } from './programs/meteora-dammv2.ts'
+import type { ParseContext, ProgramParser, RawSwap } from './types.ts'
 
 const registry = new Map<string, ProgramParser>()
 
@@ -29,6 +29,16 @@ export function tryParseInstruction(
   const parser = registry.get(programId)
   if (!parser) return null
 
-  const data = decodeBase58(dataBase58)
-  return parser.parseInstruction(data, accounts, ctx)
+  let data: Uint8Array
+  try {
+    data = decodeBase58(dataBase58)
+  } catch {
+    return null
+  }
+
+  try {
+    return parser.parseInstruction(data, accounts, ctx)
+  } catch {
+    return null
+  }
 }

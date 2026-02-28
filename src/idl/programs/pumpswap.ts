@@ -1,5 +1,4 @@
 import { matchDiscriminator, readU64LE } from '../codec.ts'
-import { NATIVE_SOL_MINT } from '../types.ts'
 import type { ProgramParser, RawSwap } from '../types.ts'
 
 const PROGRAM_ID = 'pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA'
@@ -15,10 +14,7 @@ const USER_INDEX = 1
 const BASE_MINT_INDEX = 3
 const QUOTE_MINT_INDEX = 4
 
-function parseInstruction(
-  data: Uint8Array,
-  accounts: string[],
-): RawSwap | null {
+function parseInstruction(data: Uint8Array, accounts: string[]): RawSwap | null {
   if (data.length < 24) return null
 
   const signer = accounts[USER_INDEX]
@@ -29,13 +25,11 @@ function parseInstruction(
   // buy: user receives base, pays quote
   // data = [disc][base_amount_out][max_quote_amount_in]
   if (matchDiscriminator(data, BUY_DISC)) {
-    const tokenFrom = quoteMint // what user sends
-    const tokenTo = baseMint // what user receives
     return {
-      type: tokenFrom === NATIVE_SOL_MINT ? 'pumpswap-buy' : 'pumpswap-sell',
-      tokenFrom,
+      type: 'pumpswap-buy',
+      tokenFrom: quoteMint, // what user sends
       amountFrom: readU64LE(data, 16), // max_quote_amount_in
-      tokenTo,
+      tokenTo: baseMint, // what user receives
       amountTo: readU64LE(data, 8), // base_amount_out
       signer,
     }
@@ -44,13 +38,11 @@ function parseInstruction(
   // buy_exact_quote_in: user pays exact quote, receives base
   // data = [disc][spendable_quote_in][min_base_amount_out]
   if (matchDiscriminator(data, BUY_EXACT_QUOTE_IN_DISC)) {
-    const tokenFrom = quoteMint
-    const tokenTo = baseMint
     return {
-      type: tokenFrom === NATIVE_SOL_MINT ? 'pumpswap-buy' : 'pumpswap-sell',
-      tokenFrom,
+      type: 'pumpswap-buy',
+      tokenFrom: quoteMint,
       amountFrom: readU64LE(data, 8), // spendable_quote_in
-      tokenTo,
+      tokenTo: baseMint,
       amountTo: readU64LE(data, 16), // min_base_amount_out
       signer,
     }
@@ -59,13 +51,11 @@ function parseInstruction(
   // sell: user pays base, receives quote
   // data = [disc][base_amount_in][min_quote_amount_out]
   if (matchDiscriminator(data, SELL_DISC)) {
-    const tokenFrom = baseMint // what user sends
-    const tokenTo = quoteMint // what user receives
     return {
-      type: tokenFrom === NATIVE_SOL_MINT ? 'pumpswap-buy' : 'pumpswap-sell',
-      tokenFrom,
+      type: 'pumpswap-sell',
+      tokenFrom: baseMint, // what user sends
       amountFrom: readU64LE(data, 8), // base_amount_in
-      tokenTo,
+      tokenTo: quoteMint, // what user receives
       amountTo: readU64LE(data, 16), // min_quote_amount_out
       signer,
     }

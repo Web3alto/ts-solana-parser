@@ -1,6 +1,6 @@
 import { matchDiscriminator, readU64LE } from '../codec.ts'
-import { NATIVE_SOL_MINT } from '../types.ts'
 import type { ParseContext, ProgramParser, RawSwap, SwapType } from '../types.ts'
+import { NATIVE_SOL_MINT } from '../types.ts'
 
 // sha256("global:swap")[0..8]
 const SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const
@@ -21,10 +21,7 @@ interface MeteoraConfig {
   sellType: SwapType
 }
 
-function resolveInputMint(
-  inputAccount: string,
-  ctx?: ParseContext,
-): string | null {
+function resolveInputMint(inputAccount: string, ctx?: ParseContext): string | null {
   if (!ctx) return null
   const idx = ctx.allKeys.indexOf(inputAccount)
   if (idx === -1) return null
@@ -51,16 +48,20 @@ function resolveSwapDirection(
   let tokenTo: string
 
   if (inputMint === mintB) {
-    tokenFrom = mintB; tokenTo = mintA
+    tokenFrom = mintB
+    tokenTo = mintA
   } else if (inputMint === mintA) {
-    tokenFrom = mintA; tokenTo = mintB
+    tokenFrom = mintA
+    tokenTo = mintB
   } else if (!inputMint) {
     // Ephemeral input account (not in token balances).
     // If one mint is native SOL, the ephemeral account is WSOL.
     if (mintB === NATIVE_SOL_MINT) {
-      tokenFrom = mintB; tokenTo = mintA
+      tokenFrom = mintB
+      tokenTo = mintA
     } else if (mintA === NATIVE_SOL_MINT) {
-      tokenFrom = mintA; tokenTo = mintB
+      tokenFrom = mintA
+      tokenTo = mintB
     } else {
       return null
     }
@@ -69,8 +70,7 @@ function resolveSwapDirection(
   }
 
   // buy = paying SOL; non-SOL pools: paying mintB for mintA
-  const isBuy = tokenFrom === NATIVE_SOL_MINT ||
-    (tokenTo !== NATIVE_SOL_MINT && tokenFrom === mintB)
+  const isBuy = tokenFrom === NATIVE_SOL_MINT || (tokenTo !== NATIVE_SOL_MINT && tokenFrom === mintB)
 
   return { tokenFrom, tokenTo, isBuy }
 }
@@ -78,11 +78,7 @@ function resolveSwapDirection(
 export function createMeteoraParser(config: MeteoraConfig): ProgramParser {
   const { layout, buyType, sellType } = config
 
-  function parseInstruction(
-    data: Uint8Array,
-    accounts: string[],
-    ctx?: ParseContext,
-  ): RawSwap | null {
+  function parseInstruction(data: Uint8Array, accounts: string[], ctx?: ParseContext): RawSwap | null {
     const signer = accounts[layout.payerIndex]
     const inputAccount = accounts[layout.inputTokenAccountIndex]
     const mintA = accounts[layout.mintAIndex]

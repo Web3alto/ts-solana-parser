@@ -1,6 +1,6 @@
 import { matchDiscriminator, readU64LE } from '../codec.ts'
-import { NATIVE_SOL_MINT } from '../types.ts'
 import type { ProgramParser, RawSwap } from '../types.ts'
+import { NATIVE_SOL_MINT } from '../types.ts'
 
 const PROGRAM_ID = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P'
 
@@ -14,10 +14,7 @@ const BUY_EXACT_SOL_IN_DISC = [56, 252, 116, 8, 158, 223, 205, 95] as const
 const MINT_INDEX = 2
 const USER_INDEX = 6
 
-function parseInstruction(
-  data: Uint8Array,
-  accounts: string[],
-): RawSwap | null {
+function parseInstruction(data: Uint8Array, accounts: string[]): RawSwap | null {
   if (data.length < 24) return null
 
   const mint = accounts[MINT_INDEX]

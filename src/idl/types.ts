@@ -1,5 +1,5 @@
-import type { TokenBalance } from '../types.ts'
 import { WSOL_MINT } from '../constants.ts'
+import type { TokenBalance } from '../types.ts'
 
 export type { SwapType } from '../types.ts'
 export type { TokenBalance }

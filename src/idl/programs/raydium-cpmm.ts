@@ -1,6 +1,6 @@
 import { matchDiscriminator, readU64LE } from '../codec.ts'
+import type { ParseContext, ProgramParser, RawSwap } from '../types.ts'
 import { NATIVE_SOL_MINT } from '../types.ts'
-import type { ProgramParser, RawSwap } from '../types.ts'
 
 const PROGRAM_ID = 'CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C'
 
@@ -13,10 +13,15 @@ const PAYER_INDEX = 0
 const INPUT_TOKEN_MINT_INDEX = 10
 const OUTPUT_TOKEN_MINT_INDEX = 11
 
-function parseInstruction(
-  data: Uint8Array,
-  accounts: string[],
-): RawSwap | null {
+function resolveDirection(inputMint: string, outputMint: string): 'raydium-cpmm-buy' | 'raydium-cpmm-sell' {
+  // buy = paying SOL for token; sell = paying token for SOL
+  if (inputMint === NATIVE_SOL_MINT) return 'raydium-cpmm-buy'
+  if (outputMint === NATIVE_SOL_MINT) return 'raydium-cpmm-sell'
+  // non-SOL pool: use account ordering heuristic (input = "from" → sell)
+  return 'raydium-cpmm-sell'
+}
+
+function parseInstruction(data: Uint8Array, accounts: string[], _ctx?: ParseContext): RawSwap | null {
   if (data.length < 24) return null
 
   const signer = accounts[PAYER_INDEX]
@@ -27,13 +32,12 @@ function parseInstruction(
   // Both swap variants use the same data layout: [disc][u64][u64]
   // swap_base_input:  [disc][amount_in][min_amount_out]
   // swap_base_output: [disc][max_amount_in][amount_out]
-  const isSwap = matchDiscriminator(data, SWAP_BASE_INPUT_DISC) ||
-    matchDiscriminator(data, SWAP_BASE_OUTPUT_DISC)
+  const isSwap = matchDiscriminator(data, SWAP_BASE_INPUT_DISC) || matchDiscriminator(data, SWAP_BASE_OUTPUT_DISC)
 
   if (!isSwap) return null
 
   return {
-    type: inputMint === NATIVE_SOL_MINT ? 'raydium-cpmm-buy' : 'raydium-cpmm-sell',
+    type: resolveDirection(inputMint, outputMint),
     tokenFrom: inputMint,
     amountFrom: readU64LE(data, 8),
     tokenTo: outputMint,

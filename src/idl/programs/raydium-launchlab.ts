@@ -16,10 +16,7 @@ const PAYER_INDEX = 0
 const BASE_TOKEN_MINT_INDEX = 9
 const QUOTE_TOKEN_MINT_INDEX = 10
 
-function parseInstruction(
-  data: Uint8Array,
-  accounts: string[],
-): RawSwap | null {
+function parseInstruction(data: Uint8Array, accounts: string[]): RawSwap | null {
   if (data.length < 32) return null
 
   const signer = accounts[PAYER_INDEX]
