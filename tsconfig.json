@@ -26,5 +26,6 @@
     "noUnusedParameters": true,
     "exactOptionalPropertyTypes": true,
     "noPropertyAccessFromIndexSignature": false
-  }
+  },
+  "exclude": ["test/scripts"]
 }
