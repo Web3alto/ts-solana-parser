@@ -14,10 +14,16 @@ Solana transaction parser with full instruction decoding, DEX swap detection, an
 ## Install
 
 ```bash
+npm install ts-solana-parser
+# or
+pnpm add ts-solana-parser
+# or
+yarn add ts-solana-parser
+# or
 bun add ts-solana-parser
 ```
 
-> **Note:** This package ships TypeScript source and requires a runtime or bundler that handles `.ts` imports (e.g., Bun).
+Bun gets raw TypeScript for fastest dev; Node.js / Vite / Next.js get compiled ESM automatically via conditional exports.
 
 ## Quick Start
 
@@ -141,7 +147,7 @@ if (result) {
     switch (entry.instruction.program) {
       case 'system':       // transferSol, createAccount, ...
       case 'spl-token':    // transfer, transferChecked, approve, burn, ...
-      case 'token-2022':   // same variants as spl-token
+      case 'token-2022':   // same as spl-token + extensions (immutable owner, transfer fees, etc.)
       case 'compute-budget': // setComputeUnitLimit, setComputeUnitPrice
       case 'associated-token-account': // create, createIdempotent
       case 'memo':         // memo message
@@ -168,6 +174,7 @@ const options = createRpcBackedParserOptions({
   requestTimeoutMs: 5_000,   // default: 5,000ms
   retries: 2,                // default: 2
   retryBaseMs: 300,          // default: 300ms
+  maxConcurrency: 10,        // default: 10 (parallel ALT fetches)
 })
 ```
 
@@ -197,6 +204,30 @@ import {
   TransactionMetaSchema,
   TokenBalanceSchema,
 } from 'ts-solana-parser'
+```
+
+### Utilities & Introspection
+
+```ts
+import {
+  getSupportedProtocols,
+  getSupportedTipProviders,
+  normalizeTransactionData,
+  detectTipsFromRawInstructions,
+  lookupTipProvider,
+  PROGRAM_ID_TO_PROTOCOL,
+  TIP_ADDRESS_TO_PROVIDER,
+} from 'ts-solana-parser'
+
+getSupportedProtocols()       // all detectable DEX protocols
+getSupportedTipProviders()    // all identifiable tip providers
+normalizeTransactionData(raw) // normalize raw RPC data for custom pipelines
+detectTipsFromRawInstructions(instructions, accounts) // standalone tip detection
+lookupTipProvider(address)    // check if an address is a known tip recipient
+
+// Constants
+PROGRAM_ID_TO_PROTOCOL        // Map of program IDs → Protocol enum
+TIP_ADDRESS_TO_PROVIDER       // Map of 108 tip addresses → provider names
 ```
 
 ## Types
@@ -280,12 +311,14 @@ interface ParseOutcome {
 ```bash
 bun install
 
-bun test              # run tests (200+ tests)
+bun test              # run tests (228 tests)
 bun run typecheck     # TypeScript check
 bun run lint          # Biome lint
 bun run format:check  # Prettier check
 bun run verify        # all of the above
 
+bun run build         # compile ESM + .d.ts to dist/
+bun run clean         # remove dist/
 bun run bench         # benchmark (requires RPC_URL)
 ```
 
