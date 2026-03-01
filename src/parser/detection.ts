@@ -1,3 +1,4 @@
+import { AGGREGATOR_PROGRAM_IDS, type Aggregator } from '../aggregators/constants.ts'
 import { POOL_ACCOUNT_INDEX, PROGRAM_ID_TO_PROTOCOL, type Protocol } from '../constants.ts'
 import type { Instruction } from '../types.ts'
 import { getInstructionProgramId, isCompiledInstruction, isUnparsedInstruction } from './accounts.ts'
@@ -47,5 +48,21 @@ export function extractPoolAddress(
     }
   }
 
+  return undefined
+}
+
+type KnownAggregatorProgramId = keyof typeof AGGREGATOR_PROGRAM_IDS
+
+function isKnownAggregatorProgramId(pid: string): pid is KnownAggregatorProgramId {
+  return pid in AGGREGATOR_PROGRAM_IDS
+}
+
+export function detectAggregator(topLevelInstructions: Instruction[], fullKeys: string[]): Aggregator | undefined {
+  for (const instr of topLevelInstructions) {
+    const pid = getInstructionProgramId(instr, fullKeys)
+    if (pid && isKnownAggregatorProgramId(pid)) {
+      return AGGREGATOR_PROGRAM_IDS[pid]
+    }
+  }
   return undefined
 }

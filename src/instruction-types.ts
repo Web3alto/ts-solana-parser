@@ -1,3 +1,4 @@
+import type { Aggregator } from './aggregators/constants.ts'
 import type { Protocol } from './constants.ts'
 import type { MevTip, ParsedSwap, SwapType } from './types.ts'
 
@@ -347,6 +348,16 @@ export type DexSwapInstruction = {
   protocol: Protocol
 }
 
+// ── Aggregator ──
+
+export type AggregatorInstruction = {
+  program: 'aggregator'
+  programId: string
+  aggregator: Aggregator
+  variant: string
+  signer: string
+}
+
 // ── Unknown ──
 
 export type UnknownInstruction = {
@@ -365,6 +376,7 @@ export type DecodedInstruction =
   | ATAInstruction
   | MemoInstruction
   | DexSwapInstruction
+  | AggregatorInstruction
   | UnknownInstruction
 
 // ── Full transaction result ──

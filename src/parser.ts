@@ -18,7 +18,7 @@ import {
   normalizeMint,
   selectInputOutputChanges,
 } from './parser/balance.ts'
-import { detectProtocols, extractPoolAddress } from './parser/detection.ts'
+import { detectAggregator, detectProtocols, extractPoolAddress } from './parser/detection.ts'
 import {
   approximatelyEqualBigInt,
   collectIdlCandidates,
@@ -148,6 +148,7 @@ export function parseTransactionDetailed(
     if (!allInstructions) allInstructions = getAllInstructions(message, meta)
     if (!ctx) ctx = buildParseContext(meta, fullKeys)
     const protocols = detectProtocols(allInstructions, fullKeys)
+    const routedVia = detectAggregator(message.instructions, fullKeys)
     if (protocols.length === 0) return makeOutcome('not_swap', warnings, 'NO_SWAP_SIGNAL')
 
     const state = buildOwnerTokenState(meta)
@@ -242,6 +243,7 @@ export function parseTransactionDetailed(
       protocols,
       hopCount,
       routeType,
+      routedVia,
       inputMint: input.mint,
       inputRaw: inputRaw.toString(),
       inputDecimals: input.decimals,

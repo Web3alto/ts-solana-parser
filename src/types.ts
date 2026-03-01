@@ -1,3 +1,4 @@
+import type { Aggregator } from './aggregators/constants.ts'
 import type { Protocol, TipProvider } from './constants.ts'
 
 // ── Transaction notification types ──
@@ -167,6 +168,7 @@ export interface ParsedSwap {
   readonly protocols: readonly Protocol[]
   readonly hopCount?: number | undefined
   readonly routeType?: 'single-hop' | 'multi-hop' | undefined
+  readonly routedVia?: Aggregator | undefined
   readonly inputMint: string
   readonly inputRaw: string
   readonly inputDecimals: number
