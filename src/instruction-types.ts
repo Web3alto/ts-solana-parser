@@ -1,5 +1,5 @@
 import type { Protocol } from './constants.ts'
-import type { ParsedSwap, SwapType } from './types.ts'
+import type { MevTip, ParsedSwap, SwapType } from './types.ts'
 
 // ── System program ──
 
@@ -322,5 +322,6 @@ export interface FullTransactionResult {
   readonly computeUnitsConsumed?: number | undefined
   readonly logMessages?: readonly string[] | undefined
   readonly instructions: readonly DecodedInstructionEntry[]
+  readonly tips?: readonly MevTip[] | undefined
   readonly swap?: ParsedSwap | undefined
 }

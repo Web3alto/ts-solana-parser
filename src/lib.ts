@@ -1,7 +1,7 @@
 // Core parsing (no validation -- use when you trust the input)
 
 // Constants
-export { Protocol, SOL_DECIMALS, SOL_MINT, WSOL_MINT } from './constants.ts'
+export { Protocol, SOL_DECIMALS, SOL_MINT, TipProvider, WSOL_MINT } from './constants.ts'
 // Errors
 export { DecodeError, ParserError, UnsupportedEncodingError, ValidationError } from './errors.ts'
 // Instruction types (full transaction parsing)
@@ -40,6 +40,7 @@ export type {
   CompiledInstruction,
   EncodedTransactionTuple,
   Instruction,
+  MevTip,
   ParseCode,
   ParsedInstruction,
   ParsedSwap,

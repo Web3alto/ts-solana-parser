@@ -1,4 +1,4 @@
-import type { Protocol } from './constants.ts'
+import type { Protocol, TipProvider } from './constants.ts'
 
 // ── Transaction notification types ──
 
@@ -114,6 +114,14 @@ export interface AddressTableLookup {
   writableIndexes: number[]
 }
 
+// ── MEV tip ──
+
+export interface MevTip {
+  readonly provider: TipProvider
+  readonly lamports: bigint
+  readonly recipient: string
+}
+
 // ── Swap type (IDL-derived buy/sell classification) ──
 
 export type SwapType =
@@ -173,6 +181,7 @@ export interface ParsedSwap {
    * Deprecated: use inputToken2022TransferFeeBps/outputToken2022TransferFeeBps.
    */
   readonly token2022TransferFeeBps?: number | null | undefined
+  readonly tips?: readonly MevTip[] | undefined
   readonly pool?: string | undefined
   readonly swapType?: SwapType | undefined
   readonly confidence: 'high' | 'medium' | 'low'
