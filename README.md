@@ -21,9 +21,9 @@ const result = parseSwap({
 })
 
 if (result) {
-  console.log(result.swapType)         // "pumpfun-buy"
+  console.log(result.swapType)          // "pumpfun-buy"
   console.log(result.inputAmountDecimal) // "1.5"
-  console.log(result.outputMint)        // "TknMint..."
+  console.log(result.outputMint)         // "TknMint..."
   console.log(result.tips)              // [{ provider: "Jito", lamports: 10000n, recipient: "3AVi..." }]
 }
 ```
@@ -120,11 +120,15 @@ if (result) {
 
 The unvalidated equivalent (`parseFullTransaction`) takes a `TransactionNotification` directly and skips Zod validation.
 
-## Swap API Reference
+## API Reference
 
-### `parseSwap(input, options?)` → `ParsedSwap | null`
+### Validated API (Zod validation at boundary)
 
-Validated convenience function. Validates input with Zod schemas, then parses. Returns `null` if the transaction is not a swap. Throws `ValidationError` on malformed input.
+These functions validate input with Zod schemas and throw `ValidationError` on malformed data. Use for untrusted input.
+
+#### `parseSwap(input, options?)` → `ParsedSwap | null`
+
+Validates input, then parses. Returns `null` if not a swap.
 
 ```ts
 import { parseSwap } from 'solana-swap-parser'
@@ -138,7 +142,7 @@ const swap = parseSwap({
 })
 ```
 
-### `parseSwapDetailed(input, options?)` → `ParseOutcome`
+#### `parseSwapDetailed(input, options?)` → `ParseOutcome`
 
 Same validation as `parseSwap`, but returns a detailed outcome with classification:
 
@@ -155,7 +159,7 @@ switch (outcome.kind) {
 }
 ```
 
-### `parseSwaps(inputs, options?)` → `Promise<(ParsedSwap | null)[]>`
+#### `parseSwaps(inputs, options?)` → `Promise<(ParsedSwap | null)[]>`
 
 Batch version of `parseSwap`. Validates each input individually — one bad transaction does not abort the batch. Pre-warms address lookup tables across all transactions in a single call. Results are index-correlated: `results[i]` corresponds to `inputs[i]`.
 
@@ -168,23 +172,21 @@ const results = await parseSwaps([input1, input2, input3], options)
 // ...
 ```
 
-### `parseSwapsDetailed(inputs, options?)` → `Promise<ParseOutcome[]>`
+#### `parseSwapsDetailed(inputs, options?)` → `Promise<ParseOutcome[]>`
 
 Batch version of `parseSwapDetailed`. Same per-item error handling and ALT pre-warming as `parseSwaps`, but returns detailed outcomes.
 
-```ts
-import { parseSwapsDetailed } from 'solana-swap-parser'
+#### `parseFullSwapTransaction(input, options?)` → `FullTransactionResult | null`
 
-const outcomes = await parseSwapsDetailed([input1, input2], options)
-for (const outcome of outcomes) {
-  if (outcome.kind === 'swap') console.log(outcome.swap)
-  if (outcome.kind === 'error') console.log(outcome.errorMessage)
-}
-```
+Validates input, decodes every instruction, detects MEV tips, and optionally detects a swap. Returns `null` if decoding fails entirely.
 
-### `parseTransaction(notification, options?)` → `ParsedSwap | null`
+### Unvalidated API (no Zod overhead)
 
-Core parsing function — no input validation. Use when you trust the input (e.g., from your own data source). Takes a full `TransactionNotification` object.
+These functions take a `TransactionNotification` directly and skip Zod validation. Use when you trust the input (e.g., from your own RPC calls).
+
+#### `parseTransaction(notification, options?)` → `ParsedSwap | null`
+
+Core swap parsing — no validation.
 
 ```ts
 import { parseTransaction } from 'solana-swap-parser'
@@ -195,6 +197,14 @@ const swap = parseTransaction({
   transaction: { meta, transaction: txData },
 })
 ```
+
+#### `parseTransactionDetailed(notification, options?)` → `ParseOutcome`
+
+Same as `parseTransaction` but returns a detailed outcome with `kind`, `code`, `warnings`, and optional `swap`.
+
+#### `parseFullTransaction(notification, options?)` → `FullTransactionResult | null`
+
+Full instruction decoding without Zod validation. Decodes every instruction, detects tips, and optionally detects a swap.
 
 ### `ParserOptions`
 
@@ -248,7 +258,7 @@ interface FullTransactionResult {
 }
 ```
 
-Each `DecodedInstructionEntry` contains an `index`, the decoded `instruction` (a discriminated union), and decoded `innerInstructions`.
+Each `DecodedInstructionEntry` contains an `index`, the decoded `instruction` (a discriminated union on `program`), and decoded `innerInstructions`.
 
 ### `ParsedSwap`
 
@@ -268,12 +278,14 @@ interface ParsedSwap {
   inputAmountDecimal: string
   inputAmountNumber?: number
   inputTokenProgram?: TokenProgramKind
+  inputToken2022TransferFeeBps?: number | null
   outputMint: string
   outputRaw: string
   outputDecimals: number
   outputAmountDecimal: string
   outputAmountNumber?: number
   outputTokenProgram?: TokenProgramKind
+  outputToken2022TransferFeeBps?: number | null
   tips?: MevTip[]           // MEV tips detected in this transaction
   pool?: string
   swapType?: SwapType       // e.g. "pumpfun-buy", "raydium-cpmm-sell"
@@ -293,12 +305,30 @@ interface MevTip {
 }
 ```
 
+### `ParseOutcome`
+
+```ts
+interface ParseOutcome {
+  kind: 'swap' | 'not_swap' | 'unsupported' | 'error'
+  code?: ParseCode
+  swap?: ParsedSwap
+  warnings: WarningCode[]
+  errorMessage?: string
+}
+```
+
 ### Zod schemas
 
 Exported for consumers who want to validate their own data:
 
 ```ts
-import { SwapInputSchema, TransactionMetaSchema, TokenBalanceSchema } from 'solana-swap-parser'
+import {
+  SwapInputSchema,
+  TransactionNotificationSchema,
+  TransactionResultSchema,
+  TransactionMetaSchema,
+  TokenBalanceSchema,
+} from 'solana-swap-parser'
 
 const validated = SwapInputSchema.parse(untrustedData)
 ```
