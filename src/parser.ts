@@ -1,6 +1,7 @@
 import { formatTokenAmountDecimal, toApproxTokenAmountNumber } from './amount.ts'
 import { DecodeError, UnsupportedEncodingError } from './errors.ts'
 import { normalizeTransactionData } from './normalize.ts'
+import type { NormalizedTransactionMeta } from './parser/accounts.ts'
 import {
   buildAccountIndexMap,
   buildFullAccountKeys,
@@ -31,6 +32,7 @@ import type {
   ParseOutcome,
   ParserOptions,
   SwapType,
+  TransactionMessage,
   TransactionNotification,
   WarningCode,
 } from './types.ts'
@@ -63,56 +65,76 @@ function makeOutcome(
   }
 }
 
-export function parseTransactionDetailed(notification: TransactionNotification, options?: ParserOptions): ParseOutcome {
+export function parseTransactionDetailed(
+  notification: TransactionNotification,
+  options?: ParserOptions,
+  /** @internal Pre-computed normalization to skip redundant work (used by parseFullTransaction) */
+  _prepared?: { message: TransactionMessage; meta: NormalizedTransactionMeta; fullKeys: string[] },
+): ParseOutcome {
   const warnings: WarningCode[] = []
 
-  let message: import('./types.ts').TransactionMessage
-  try {
-    ;({ message } = normalizeTransactionData(notification.transaction.transaction))
-  } catch (err) {
-    if (err instanceof UnsupportedEncodingError) {
-      return makeOutcome('unsupported', warnings, 'UNSUPPORTED_ENCODING', err.message)
-    }
-    if (err instanceof DecodeError) {
-      if (err.message.startsWith('Unsupported transaction version')) {
-        return makeOutcome('unsupported', warnings, 'UNSUPPORTED_TX_VERSION', err.message)
+  let message: TransactionMessage
+  let meta: NormalizedTransactionMeta
+  let fullKeys: string[]
+
+  if (_prepared) {
+    ;({ message, meta, fullKeys } = _prepared)
+  } else {
+    try {
+      ;({ message } = normalizeTransactionData(notification.transaction.transaction))
+    } catch (err) {
+      if (err instanceof UnsupportedEncodingError) {
+        return makeOutcome('unsupported', warnings, 'UNSUPPORTED_ENCODING', err.message)
       }
-      return makeOutcome('error', warnings, 'DECODE_ERROR', err.message)
+      if (err instanceof DecodeError) {
+        if (err.message.startsWith('Unsupported transaction version')) {
+          return makeOutcome('unsupported', warnings, 'UNSUPPORTED_TX_VERSION', err.message)
+        }
+        return makeOutcome('error', warnings, 'DECODE_ERROR', err.message)
+      }
+      options?.onInternalError?.(err)
+      return makeOutcome('error', warnings, 'INTERNAL_ERROR', String(err))
     }
-    options?.onInternalError?.(err)
-    return makeOutcome('error', warnings, 'INTERNAL_ERROR', String(err))
+
+    try {
+      const resolvedLookups =
+        message.addressTableLookups?.length && options?.resolveAddressTableLookups
+          ? options.resolveAddressTableLookups(message.addressTableLookups)
+          : null
+      if (message.addressTableLookups?.length && !resolvedLookups && options?.resolveAddressTableLookups) {
+        warnings.push('alt-resolution-incomplete')
+      }
+      meta = normalizeMetaWithLookups(notification.transaction.meta, resolvedLookups)
+
+      if (meta.err !== null) return makeOutcome('not_swap', warnings, 'META_ERR')
+
+      const preCheckInstructions = getAllInstructions(message, meta)
+      if (hasUnresolvedAddressLookupIndexes(message, meta, preCheckInstructions)) {
+        return makeOutcome(
+          'unsupported',
+          warnings,
+          resolvedLookups ? 'ALT_RESOLUTION_FAILED' : 'MISSING_LOADED_ADDRESSES',
+          'Versioned transaction references address lookup indexes without loaded addresses',
+        )
+      }
+
+      fullKeys = buildFullAccountKeys(message, meta)
+      if (fullKeys.length === 0) return makeOutcome('not_swap', warnings, 'NO_SWAP_SIGNAL')
+    } catch (err) {
+      options?.onInternalError?.(err)
+      return makeOutcome('error', warnings, 'INTERNAL_ERROR', String(err))
+    }
   }
 
   try {
-    const resolvedLookups =
-      message.addressTableLookups?.length && options?.resolveAddressTableLookups
-        ? options.resolveAddressTableLookups(message.addressTableLookups)
-        : null
-    if (message.addressTableLookups?.length && !resolvedLookups && options?.resolveAddressTableLookups) {
-      warnings.push('alt-resolution-incomplete')
-    }
-    const meta = normalizeMetaWithLookups(notification.transaction.meta, resolvedLookups)
-    const { signature, slot, blockTime } = notification
-
     if (meta.err !== null) return makeOutcome('not_swap', warnings, 'META_ERR')
-
-    const allInstructions = getAllInstructions(message, meta)
-
-    if (hasUnresolvedAddressLookupIndexes(message, meta, allInstructions)) {
-      return makeOutcome(
-        'unsupported',
-        warnings,
-        resolvedLookups ? 'ALT_RESOLUTION_FAILED' : 'MISSING_LOADED_ADDRESSES',
-        'Versioned transaction references address lookup indexes without loaded addresses',
-      )
-    }
-
-    const fullKeys = buildFullAccountKeys(message, meta)
     if (fullKeys.length === 0) return makeOutcome('not_swap', warnings, 'NO_SWAP_SIGNAL')
 
     const feePayer = fullKeys[0]
     if (!feePayer) return makeOutcome('error', warnings, 'INTERNAL_ERROR', 'Missing fee payer')
 
+    const { signature, slot, blockTime } = notification
+    const allInstructions = getAllInstructions(message, meta)
     const accountIndexMap = buildAccountIndexMap(fullKeys)
     const protocols = detectProtocols(allInstructions, fullKeys)
     if (protocols.length === 0) return makeOutcome('not_swap', warnings, 'NO_SWAP_SIGNAL')
@@ -239,5 +261,17 @@ export function parseTransactionDetailed(notification: TransactionNotification, 
 
 export function parseTransaction(notification: TransactionNotification, options?: ParserOptions): ParsedSwap | null {
   const outcome = parseTransactionDetailed(notification, options)
+  return outcome.swap ?? null
+}
+
+/** @internal Used by parseFullTransaction to avoid double normalization */
+export function _parseTransactionWithPrepared(
+  message: TransactionMessage,
+  meta: NormalizedTransactionMeta,
+  fullKeys: string[],
+  notification: TransactionNotification,
+  options?: ParserOptions,
+): ParsedSwap | null {
+  const outcome = parseTransactionDetailed(notification, options, { message, meta, fullKeys })
   return outcome.swap ?? null
 }

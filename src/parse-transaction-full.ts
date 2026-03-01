@@ -6,15 +6,15 @@ import {
   buildFullAccountKeys,
   getInstructionProgramId,
   isCompiledInstruction,
+  isUnparsedInstruction,
   normalizeMetaWithLookups,
 } from './parser/accounts.ts'
-import { parseTransaction } from './parser.ts'
+import { _parseTransactionWithPrepared } from './parser.ts'
 import type {
   CompiledInstruction,
   Instruction,
   ParserOptions,
   TransactionNotification,
-  UnparsedInstruction,
 } from './types.ts'
 
 export function parseFullTransaction(
@@ -73,7 +73,7 @@ export function parseFullTransaction(
   }
 
   // 4. Optionally detect swap
-  const swap = parseTransaction(notification, options) ?? undefined
+  const swap = _parseTransactionWithPrepared(message, meta, fullKeys, notification, options) ?? undefined
 
   const { logMessages, computeUnitsConsumed } = notification.transaction.meta
 
@@ -103,7 +103,7 @@ function decodeTopLevel(instr: Instruction, fullKeys: string[], ctx: ParseContex
     return decodeInstruction(programId, instr.data, accounts, ctx)
   }
 
-  if (isUnparsedInstr(instr)) {
+  if (isUnparsedInstruction(instr)) {
     return decodeInstruction(programId, instr.data, instr.accounts, ctx)
   }
 
@@ -113,14 +113,4 @@ function decodeTopLevel(instr: Instruction, fullKeys: string[], ctx: ParseContex
 
 function resolveCompiledAccounts(instr: CompiledInstruction, fullKeys: string[]): string[] {
   return instr.accounts.map((idx) => fullKeys[idx] ?? '')
-}
-
-function isUnparsedInstr(instr: Instruction): instr is UnparsedInstruction {
-  return (
-    'programId' in instr &&
-    'accounts' in instr &&
-    'data' in instr &&
-    Array.isArray(instr.accounts) &&
-    (instr.accounts.length === 0 || typeof instr.accounts[0] === 'string')
-  )
 }

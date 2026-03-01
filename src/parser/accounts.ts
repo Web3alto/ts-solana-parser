@@ -99,8 +99,7 @@ export function isUnparsedInstruction(instr: Instruction): instr is UnparsedInst
     'accounts' in instr &&
     'data' in instr &&
     Array.isArray(instr.accounts) &&
-    (instr.accounts as unknown[]).length > 0 &&
-    typeof (instr.accounts as unknown[])[0] === 'string'
+    ((instr.accounts as unknown[]).length === 0 || typeof (instr.accounts as unknown[])[0] === 'string')
   )
 }
 
