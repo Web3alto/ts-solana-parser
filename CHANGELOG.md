@@ -6,7 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Breaking Changes
 
-- **Removed** deprecated `token2022TransferFeeBps` field from `ParsedSwap` — use `inputToken2022TransferFeeBps` / `outputToken2022TransferFeeBps` instead
+- **Removed** deprecated `token2022TransferFeeBps` field from `ParsedSwap`
+- **Removed** `inputToken2022TransferFeeBps` / `outputToken2022TransferFeeBps` placeholder fields from `ParsedSwap`
 - **Removed** `resolveToken2022TransferFeeBps` callback from `ParserOptions`
 - **Renamed** all `WarningCode` values from kebab-case to SCREAMING_SNAKE_CASE (e.g., `multi-hop-route` → `MULTI_HOP_ROUTE`)
 

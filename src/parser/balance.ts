@@ -98,6 +98,11 @@ export function computeSolChange(
   return { mint: SOL_MINT, rawDelta: trueDelta, decimals: SOL_DECIMALS }
 }
 
+/**
+ * Consolidates token changes by normalized mint, merging WSOL into SOL,
+ * then folds in the native SOL lamport change. Entries that net to zero
+ * after consolidation are filtered out.
+ */
 export function mergeChanges(tokenChanges: TokenChange[], solChange: TokenChange | null): TokenChange[] {
   const byMint = new Map<string, { mint: string; rawDelta: bigint; decimals: number }>()
 
@@ -137,6 +142,18 @@ interface InputOutputResult {
   warnings: WarningCode[]
 }
 
+/**
+ * Picks the single input (negative delta) and output (positive delta) token
+ * changes that represent the swap. Uses a two-strategy approach:
+ *
+ * 1. **IDL-anchored** (when `selectedIdl` is present): matches the IDL-declared
+ *    fromMint/toMint against the merged changes for an exact anchor.
+ * 2. **Heuristic fallback**: selects the largest-magnitude negative change as
+ *    input and largest positive change as output. If IDL anchoring was attempted
+ *    but failed, a `'IDL_MINTS_NOT_FOUND_IN_PRIMARY_DELTAS'` warning is emitted.
+ *
+ * Returns `null` if there are no negative or no positive changes.
+ */
 export function selectInputOutputChanges(
   merged: TokenChange[],
   selectedIdl: IdlSelection | null,

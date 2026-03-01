@@ -41,8 +41,8 @@ function buildPumpfunBuyNotification(): TransactionNotification {
       meta: {
         err: null,
         fee: 5000,
-        preBalances: [1_000_000_000, 0, 0, 0, 0, 0],
-        postBalances: [900_000_000, 0, 0, 0, 0, 0],
+        preBalances: [0, 0, 0, 0, 0, 0, 1_000_000_000],
+        postBalances: [0, 0, 0, 0, 0, 0, 900_000_000],
         preTokenBalances: [tb(1, TOKEN_MINT, '0', 6, USER)],
         postTokenBalances: [tb(1, TOKEN_MINT, '500000', 6, USER)],
         innerInstructions: [],
@@ -51,17 +51,18 @@ function buildPumpfunBuyNotification(): TransactionNotification {
       transaction: {
         message: {
           accountKeys: [
-            USER,
-            TOKEN_MINT,
-            'Filler11111111111111111111111111111111111111',
-            POOL,
-            'Filler21111111111111111111111111111111111111',
-            PUMPFUN_PROGRAM,
+            'GlobalCfg11111111111111111111111111111111111', // 0 globalConfig
+            'FeeRecip111111111111111111111111111111111111', // 1 feeRecipient
+            TOKEN_MINT, // 2 mint
+            POOL, // 3 bondingCurve (pool)
+            'AssocBond11111111111111111111111111111111111', // 4 assocBondingCurve
+            PUMPFUN_PROGRAM, // 5 program
+            USER, // 6 user (signer)
           ],
           instructions: [
             {
               programIdIndex: 5,
-              accounts: [0, 1, 2, 3, 4, 5],
+              accounts: [0, 1, 2, 3, 4, 5, 6],
               data: encodeIxData(PUMPFUN_BUY_DISC, 100_000_000n, 500_000n),
             },
           ],

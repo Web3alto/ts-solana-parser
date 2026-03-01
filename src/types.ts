@@ -171,14 +171,12 @@ export interface ParsedSwap {
   readonly inputAmountDecimal: string
   readonly inputAmountNumber?: number | undefined
   readonly inputTokenProgram?: TokenProgramKind | undefined
-  readonly inputToken2022TransferFeeBps?: number | null | undefined
   readonly outputMint: string
   readonly outputRaw: string
   readonly outputDecimals: number
   readonly outputAmountDecimal: string
   readonly outputAmountNumber?: number | undefined
   readonly outputTokenProgram?: TokenProgramKind | undefined
-  readonly outputToken2022TransferFeeBps?: number | null | undefined
   readonly tips?: readonly MevTip[] | undefined
   readonly pool?: string | undefined
   readonly swapType?: SwapType | undefined

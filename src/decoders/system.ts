@@ -27,9 +27,10 @@ function readAddress(data: Uint8Array, offset: number): string {
   return encodeBase58(data.subarray(offset, offset + 32))
 }
 
-function readString(data: Uint8Array, offset: number): { value: string; bytesRead: number } {
+function readString(data: Uint8Array, offset: number): { value: string; bytesRead: number } | null {
+  if (offset + 4 > data.length) return null
   const len = readU32LE(data, offset) // u32 LE length prefix
-  // Explicitly cast to number since u32 length fits safely
+  if (offset + 4 + len > data.length) return null
   const end = offset + 4 + len
   const value = textDecoder.decode(data.subarray(offset + 4, end))
   return { value, bytesRead: 4 + len }
@@ -95,6 +96,7 @@ export function decodeSystemInstruction(data: Uint8Array, accounts: string[]): S
       if (data.length < 40 || accounts.length < 2) return null
       const base = readAddress(data, 4)
       const seed = readString(data, 36)
+      if (!seed) return null
       const offset = 36 + seed.bytesRead
       if (data.length < offset + 48) return null // 8 + 8 + 32
       return {
@@ -165,6 +167,7 @@ export function decodeSystemInstruction(data: Uint8Array, accounts: string[]): S
       // accounts: [0] source, [1] sourceBase, [2] destination
       if (data.length < 12 || accounts.length < 3) return null
       const seed = readString(data, 12)
+      if (!seed) return null
       const offset = 12 + seed.bytesRead
       if (data.length < offset + 32) return null
       return {
@@ -195,6 +198,7 @@ export function decodeSystemInstruction(data: Uint8Array, accounts: string[]): S
       if (data.length < 36 || accounts.length < 2) return null
       const base = readAddress(data, 4)
       const seed = readString(data, 36)
+      if (!seed) return null
       const offset = 36 + seed.bytesRead
       if (data.length < offset + 32) return null
       return {
@@ -213,6 +217,7 @@ export function decodeSystemInstruction(data: Uint8Array, accounts: string[]): S
       if (data.length < 36 || accounts.length < 2) return null
       const base = readAddress(data, 4)
       const seed = readString(data, 36)
+      if (!seed) return null
       const offset = 36 + seed.bytesRead
       if (data.length < offset + 40) return null // 8 + 32
       return {

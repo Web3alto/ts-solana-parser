@@ -497,6 +497,283 @@ describe('integration: end-to-end per protocol', () => {
     expect(swap.confidence).toBe('medium')
   })
 
+  test('RaydiumAMM swapBaseIn buy', () => {
+    // Raydium AMM (legacy): 1-byte instruction index, not Anchor discriminator.
+    // swapBaseIn = instruction 9, data = [1 byte index][8 amountIn][8 minAmountOut]
+    // Account layout (18 accounts for swap):
+    //   [1]=amm (pool), [15]=userSourceTokenAccount, [16]=userDestTokenAccount, [17]=userSourceOwner (signer)
+    // POOL_ACCOUNT_INDEX = 1
+    const RAYDIUM_AMM_PROGRAM = '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8'
+    const amountIn = 60_000_000n // 0.06 SOL
+    const minAmountOut = 300_000n
+
+    const data = encodeBase58(Uint8Array.from([9, ...u64le(amountIn), ...u64le(minAmountOut)]))
+
+    const sourceTokenAccount = 'SrcTknAccRAMM11111111111111111111111111111'
+    const destTokenAccount = 'DstTknAccRAMM11111111111111111111111111111'
+
+    // Build 18 accounts: [0]-[14] are fillers except [1]=POOL, then [15]=source, [16]=dest, [17]=USER
+    const accounts: string[] = [
+      'RaydiumFiller001111111111111111111111111111', // 0 tokenProgram
+      POOL, // 1 amm (pool)
+      'RaydiumFiller021111111111111111111111111111', // 2 ammAuthority
+      'RaydiumFiller031111111111111111111111111111', // 3 ammOpenOrders
+      'RaydiumFiller041111111111111111111111111111', // 4 ammTargetOrders
+      'RaydiumFiller051111111111111111111111111111', // 5 poolCoinTokenAccount
+      'RaydiumFiller061111111111111111111111111111', // 6 poolPcTokenAccount
+      'RaydiumFiller071111111111111111111111111111', // 7 serumProgram
+      'RaydiumFiller081111111111111111111111111111', // 8 serumMarket
+      'RaydiumFiller091111111111111111111111111111', // 9 serumBids
+      'RaydiumFiller101111111111111111111111111111', // 10 serumAsks
+      'RaydiumFiller111111111111111111111111111111', // 11 serumEventQueue
+      'RaydiumFiller121111111111111111111111111111', // 12 serumCoinVault
+      'RaydiumFiller131111111111111111111111111111', // 13 serumPcVault
+      'RaydiumFiller141111111111111111111111111111', // 14 serumVaultSigner
+      sourceTokenAccount, // 15 userSourceTokenAccount
+      destTokenAccount, // 16 userDestTokenAccount
+      USER, // 17 userSourceOwner (signer)
+    ]
+
+    // allKeys = [USER, sourceTokenAccount, destTokenAccount]
+    // sourceTokenAccount is at allKeys index 1, destTokenAccount at index 2.
+    // Token balances link source to WSOL, dest to TOKEN_MINT.
+    const notification: TransactionNotification = {
+      signature: 'raydium-amm-buy-sig',
+      slot: 700,
+      transaction: {
+        meta: {
+          err: null,
+          fee: 5000,
+          preBalances: [1_000_000_000, 0, 0],
+          postBalances: [1_000_000_000 - 5000, 0, 0],
+          preTokenBalances: [
+            tb(0, TOKEN_MINT, '0', 6, USER),
+            tb(0, WSOL_MINT, '60000000', 9, USER),
+            // sourceTokenAccount holds WSOL at allKeys index 1
+            tb(1, WSOL_MINT, '60000000', 9, sourceTokenAccount),
+            // destTokenAccount holds TOKEN_MINT at allKeys index 2
+            tb(2, TOKEN_MINT, '0', 6, destTokenAccount),
+          ],
+          postTokenBalances: [
+            tb(0, TOKEN_MINT, '300000', 6, USER),
+            tb(0, WSOL_MINT, '0', 9, USER),
+            tb(1, WSOL_MINT, '0', 9, sourceTokenAccount),
+            tb(2, TOKEN_MINT, '300000', 6, destTokenAccount),
+          ],
+          innerInstructions: [],
+          loadedAddresses: null,
+        },
+        transaction: {
+          signatures: ['raydium-amm-buy-sig'],
+          message: {
+            accountKeys: [USER, sourceTokenAccount, destTokenAccount],
+            recentBlockhash: '11111111111111111111111111111111',
+            instructions: [
+              {
+                programId: RAYDIUM_AMM_PROGRAM,
+                accounts,
+                data,
+              },
+            ],
+          },
+        },
+      },
+    }
+
+    const outcome = parseSwapDetailed(notificationToSwapInput(notification))
+
+    expect(outcome.kind).toBe('swap')
+    const swap = outcome.swap!
+    expect(swap.swapType).toBe('raydium-amm-buy')
+    expect(swap.inputMint).toBe(SOL_MINT)
+    expect(swap.outputMint).toBe(TOKEN_MINT)
+    expect(swap.inputRaw).toBe('60000000')
+    expect(swap.outputRaw).toBe('300000')
+    expect(swap.user).toBe(USER)
+    expect(swap.pool).toBe(POOL)
+    expect(swap.confidence).toBe('medium')
+  })
+
+  test('MeteoraDAMM buy', () => {
+    // Meteora DAMM swap: user spends WSOL (via token account), receives token.
+    // Account layout: [0]=pool, [1]=userSourceToken, [2]=userDestinationToken, [12]=user (signer)
+    // POOL_ACCOUNT_INDEX = 0
+    // Anchor discriminator sha256("global:swap")[0..8]
+    const METEORA_DAMM_PROGRAM = 'Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB'
+    const METEORA_DAMM_SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const
+    const amountIn = 120_000_000n // 0.12 SOL
+    const minAmountOut = 550_000n
+
+    const data = encodeIxData([...METEORA_DAMM_SWAP_DISC], amountIn, minAmountOut)
+
+    const sourceTokenAccount = 'SrcTknAccDAMM11111111111111111111111111111'
+    const destTokenAccount = 'DstTknAccDAMM11111111111111111111111111111'
+
+    // Build 13 accounts: [0]=pool, [1]=sourceToken, [2]=destToken, [3]-[11]=fillers, [12]=user
+    const accounts: string[] = [
+      POOL, // 0 pool
+      sourceTokenAccount, // 1 userSourceToken
+      destTokenAccount, // 2 userDestinationToken
+      'DammFiller03111111111111111111111111111111', // 3
+      'DammFiller04111111111111111111111111111111', // 4
+      'DammFiller05111111111111111111111111111111', // 5
+      'DammFiller06111111111111111111111111111111', // 6
+      'DammFiller07111111111111111111111111111111', // 7
+      'DammFiller08111111111111111111111111111111', // 8
+      'DammFiller09111111111111111111111111111111', // 9
+      'DammFiller10111111111111111111111111111111', // 10
+      'DammFiller11111111111111111111111111111111', // 11
+      USER, // 12 user (signer)
+    ]
+
+    // allKeys = [USER, sourceTokenAccount, destTokenAccount]
+    // sourceTokenAccount at allKeys index 1, destTokenAccount at index 2.
+    const notification: TransactionNotification = {
+      signature: 'meteora-damm-buy-sig',
+      slot: 800,
+      transaction: {
+        meta: {
+          err: null,
+          fee: 5000,
+          preBalances: [1_000_000_000, 0, 0],
+          postBalances: [1_000_000_000 - 5000, 0, 0],
+          preTokenBalances: [
+            tb(0, TOKEN_MINT, '0', 6, USER),
+            tb(0, WSOL_MINT, '120000000', 9, USER),
+            // sourceTokenAccount holds WSOL at allKeys index 1
+            tb(1, WSOL_MINT, '120000000', 9, sourceTokenAccount),
+            // destTokenAccount holds TOKEN_MINT at allKeys index 2
+            tb(2, TOKEN_MINT, '0', 6, destTokenAccount),
+          ],
+          postTokenBalances: [
+            tb(0, TOKEN_MINT, '550000', 6, USER),
+            tb(0, WSOL_MINT, '0', 9, USER),
+            tb(1, WSOL_MINT, '0', 9, sourceTokenAccount),
+            tb(2, TOKEN_MINT, '550000', 6, destTokenAccount),
+          ],
+          innerInstructions: [],
+          loadedAddresses: null,
+        },
+        transaction: {
+          signatures: ['meteora-damm-buy-sig'],
+          message: {
+            accountKeys: [USER, sourceTokenAccount, destTokenAccount],
+            recentBlockhash: '11111111111111111111111111111111',
+            instructions: [
+              {
+                programId: METEORA_DAMM_PROGRAM,
+                accounts,
+                data,
+              },
+            ],
+          },
+        },
+      },
+    }
+
+    const outcome = parseSwapDetailed(notificationToSwapInput(notification))
+
+    expect(outcome.kind).toBe('swap')
+    const swap = outcome.swap!
+    expect(swap.swapType).toBe('meteora-damm-buy')
+    expect(swap.inputMint).toBe(SOL_MINT)
+    expect(swap.outputMint).toBe(TOKEN_MINT)
+    expect(swap.inputRaw).toBe('120000000')
+    expect(swap.outputRaw).toBe('550000')
+    expect(swap.user).toBe(USER)
+    expect(swap.pool).toBe(POOL)
+    expect(swap.confidence).toBe('medium')
+  })
+
+  test('MeteoraDLMM buy', () => {
+    // Meteora DLMM swap: user spends WSOL (via token account), receives token.
+    // Account layout: [0]=lb_pair (pool), [4]=user_token_in, [5]=user_token_out,
+    //                  [6]=token_x_mint, [7]=token_y_mint, [10]=user (signer)
+    // POOL_ACCOUNT_INDEX = 0
+    // Anchor discriminator sha256("global:swap")[0..8]
+    const METEORA_DLMM_PROGRAM = 'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'
+    const METEORA_DLMM_SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const
+    const amountIn = 90_000_000n // 0.09 SOL
+    const minAmountOut = 450_000n
+
+    const data = encodeIxData([...METEORA_DLMM_SWAP_DISC], amountIn, minAmountOut)
+
+    const userTokenIn = 'UserTknInDLMM11111111111111111111111111111'
+
+    // Build 11 accounts: [0]=pool, [1]-[3]=fillers, [4]=userTokenIn, [5]=userTokenOut,
+    //                     [6]=tokenXMint, [7]=tokenYMint, [8]-[9]=fillers, [10]=user
+    const accounts: string[] = [
+      POOL, // 0 lb_pair (pool)
+      'DlmmFiller01111111111111111111111111111111', // 1 binArrayBitmapExtension
+      'DlmmFiller02111111111111111111111111111111', // 2 reserveX
+      'DlmmFiller03111111111111111111111111111111', // 3 reserveY
+      userTokenIn, // 4 user_token_in
+      'UserTknOutDLMM1111111111111111111111111111', // 5 user_token_out
+      TOKEN_MINT, // 6 token_x_mint
+      WSOL_MINT, // 7 token_y_mint
+      'DlmmFiller08111111111111111111111111111111', // 8 oracle
+      'DlmmFiller09111111111111111111111111111111', // 9 hostFeeIn
+      USER, // 10 user (signer)
+    ]
+
+    // allKeys = [USER, userTokenIn]
+    // userTokenIn is at allKeys index 1.
+    // Token balance: userTokenIn holds WSOL => resolveDirection sees inputMint=WSOL_MINT (mintY),
+    // so tokenFrom=WSOL_MINT (mintY), tokenTo=TOKEN_MINT (mintX), isBuy=true.
+    const notification: TransactionNotification = {
+      signature: 'meteora-dlmm-buy-sig',
+      slot: 900,
+      transaction: {
+        meta: {
+          err: null,
+          fee: 5000,
+          preBalances: [1_000_000_000, 0],
+          postBalances: [1_000_000_000 - 5000, 0],
+          preTokenBalances: [
+            tb(0, TOKEN_MINT, '0', 6, USER),
+            tb(0, WSOL_MINT, '90000000', 9, USER),
+            // userTokenIn holds WSOL at allKeys index 1
+            tb(1, WSOL_MINT, '90000000', 9, userTokenIn),
+          ],
+          postTokenBalances: [
+            tb(0, TOKEN_MINT, '450000', 6, USER),
+            tb(0, WSOL_MINT, '0', 9, USER),
+            tb(1, WSOL_MINT, '0', 9, userTokenIn),
+          ],
+          innerInstructions: [],
+          loadedAddresses: null,
+        },
+        transaction: {
+          signatures: ['meteora-dlmm-buy-sig'],
+          message: {
+            accountKeys: [USER, userTokenIn],
+            recentBlockhash: '11111111111111111111111111111111',
+            instructions: [
+              {
+                programId: METEORA_DLMM_PROGRAM,
+                accounts,
+                data,
+              },
+            ],
+          },
+        },
+      },
+    }
+
+    const outcome = parseSwapDetailed(notificationToSwapInput(notification))
+
+    expect(outcome.kind).toBe('swap')
+    const swap = outcome.swap!
+    expect(swap.swapType).toBe('meteora-dlmm-buy')
+    expect(swap.inputMint).toBe(SOL_MINT)
+    expect(swap.outputMint).toBe(TOKEN_MINT)
+    expect(swap.inputRaw).toBe('90000000')
+    expect(swap.outputRaw).toBe('450000')
+    expect(swap.user).toBe(USER)
+    expect(swap.pool).toBe(POOL)
+    expect(swap.confidence).toBe('medium')
+  })
+
   test('Meteora DAMMv2 buy', () => {
     // Meteora DAMMv2 swap: user spends WSOL (via token account), receives token.
     // Account layout: [0]=pool, [1]=??, [2]=inputTokenAccount, [3]=??,

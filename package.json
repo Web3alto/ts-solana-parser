@@ -25,18 +25,12 @@
   },
   "dependencies": {
     "@solana-program/address-lookup-table": "^0.11.0",
-    "@solana-program/compute-budget": "^0.14.0",
-    "@solana-program/memo": "^0.11.0",
-    "@solana-program/system": "^0.12.0",
-    "@solana-program/token": "^0.11.0",
-    "@solana-program/token-2022": "^0.9.0",
     "@solana/kit": "^6.1.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
     "@types/bun": "latest",
-    "playwright": "^1.58.2",
     "prettier": "^3.5.0"
   },
   "peerDependencies": {

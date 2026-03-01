@@ -318,8 +318,6 @@ describe('parseSwapDetailed (detailed)', () => {
     expect(outcome.swap?.warnings).toContain('IDL_BALANCE_AMOUNT_MISMATCH')
     expect(outcome.swap?.warnings).toContain('POSSIBLE_TOKEN2022_TRANSFER_FEE')
     expect(outcome.swap?.outputTokenProgram).toBe('token-2022')
-    expect(outcome.swap?.inputToken2022TransferFeeBps).toBeNull()
-    expect(outcome.swap?.outputToken2022TransferFeeBps).toBeNull()
   })
 
   test('anchors input/output mint selection to IDL when extra rebates exist', () => {

@@ -23,6 +23,20 @@ function hasBidirectionalDelta(deltas: Map<string, bigint>): boolean {
   return false
 }
 
+/**
+ * Identifies the most likely swap initiator among all token-holding accounts.
+ * Uses a two-phase scoring strategy:
+ *
+ * **Phase 1 -- Bidirectional deltas:** Only considers owners whose token deltas
+ * include both a positive and negative change (strong swap signal). Scores:
+ * - **+4** if the owner is the fee payer
+ * - **+3** if the owner is a transaction signer
+ * - **+2** if the owner has a non-zero native SOL delta
+ *
+ * **Phase 2 -- Fallback:** If no bidirectional-delta owner is found, falls back
+ * to any owner with a non-zero token change, a SOL delta, and preferring signers.
+ * If no match is found at all, defaults to the fee payer.
+ */
 export function findSwapUser(
   state: OwnerTokenState,
   accountIndexMap: Map<string, number>,

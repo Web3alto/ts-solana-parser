@@ -219,14 +219,12 @@ interface ParsedSwap {
   inputAmountDecimal: string   // human-readable decimal string
   inputAmountNumber?: number   // approximate JS number (may lose precision)
   inputTokenProgram?: TokenProgramKind
-  inputToken2022TransferFeeBps?: number | null
   outputMint: string
   outputRaw: string
   outputDecimals: number
   outputAmountDecimal: string
   outputAmountNumber?: number
   outputTokenProgram?: TokenProgramKind
-  outputToken2022TransferFeeBps?: number | null
   tips?: MevTip[]
   pool?: string
   swapType?: SwapType          // e.g. "pumpfun-buy", "raydium-cpmm-sell"

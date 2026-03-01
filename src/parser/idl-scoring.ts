@@ -15,6 +15,12 @@ export interface IdlSelection {
   score: number
 }
 
+/**
+ * Iterates all instructions in a transaction, attempts to match each against
+ * registered IDL parsers via discriminator lookup, and returns successfully
+ * parsed swap candidates. Handles both unparsed (high-level) and compiled
+ * (low-level index-based) instruction formats.
+ */
 export function collectIdlCandidates(allInstructions: Instruction[], ctx: ParseContext): IdlCandidate[] {
   const { allKeys } = ctx
   const out: IdlCandidate[] = []
@@ -50,12 +56,32 @@ export function collectIdlCandidates(allInstructions: Instruction[], ctx: ParseC
   return out
 }
 
+/**
+ * Maps a numeric candidate score to a confidence tier.
+ * - `'high'`: score >= 10 (both from/to deltas align with IDL direction)
+ * - `'medium'`: score >= 6 (partial alignment or mitigating signals)
+ * - `'low'`: score < 6 (weak or contradictory evidence)
+ */
 function classifyConfidence(score: number): 'high' | 'medium' | 'low' {
   if (score >= 10) return 'high'
   if (score >= 6) return 'medium'
   return 'low'
 }
 
+/**
+ * Scores an IDL candidate by comparing its declared swap direction against
+ * observed on-chain token balance deltas for the candidate's signer.
+ *
+ * Scoring criteria:
+ * - **+5** if signer's fromMint delta is negative (tokens left the wallet)
+ * - **+5** if signer's toMint delta is positive (tokens entered the wallet)
+ * - **+1** each for non-zero fromMint/toMint deltas (activity signal)
+ * - **-4** if fromMint === toMint (unlikely real swap, probably self-transfer)
+ * - **+1** if candidate signer is the fee payer (common for user-initiated swaps)
+ * - **-3** (early return) if the signer has no token deltas at all
+ *
+ * Typical score range: -3 to 13. See {@link classifyConfidence} for thresholds.
+ */
 function scoreCandidate(candidate: IdlCandidate, state: OwnerTokenState, feePayer: string): number {
   const userDeltas = state.deltasByOwner.get(candidate.swap.signer)
   if (!userDeltas) return -3
@@ -78,6 +104,12 @@ function scoreCandidate(candidate: IdlCandidate, state: OwnerTokenState, feePaye
   return score
 }
 
+/**
+ * Selects the highest-scoring IDL candidate from the list.
+ * Each candidate is scored against observed balance deltas, and the one with
+ * the best score is returned along with its confidence classification.
+ * Returns `null` if no candidates exist.
+ */
 export function selectBestIdlCandidate(
   candidates: IdlCandidate[],
   state: OwnerTokenState,
