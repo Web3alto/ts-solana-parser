@@ -103,7 +103,7 @@ for (const outcome of outcomes) {
 
 ### `parseTransaction(notification, options?)` → `ParsedSwap | null`
 
-Core parsing function — no input validation. Use when you trust the input (e.g., from your own WebSocket stream). Takes a full `TransactionNotification` object.
+Core parsing function — no input validation. Use when you trust the input (e.g., from your own data source). Takes a full `TransactionNotification` object.
 
 ```ts
 import { parseTransaction } from 'solana-swap-parser'
@@ -190,25 +190,6 @@ import { SwapInputSchema, TransactionMetaSchema, TokenBalanceSchema } from 'sola
 const validated = SwapInputSchema.parse(untrustedData)
 ```
 
-## Streaming
-
-Opt-in real-time streaming via Helius WebSocket:
-
-```ts
-import { startStream } from 'solana-swap-parser/stream'
-
-const handle = startStream({
-  parserOptions: options,
-  onSwap: (swap) => console.log(swap),
-  onMetrics: (event) => { /* counters, gauges, timings */ },
-})
-
-// Graceful shutdown
-const result = await handle.stop({ drain: true, timeoutMs: 30_000 })
-```
-
-Requires `RPC_URL` (or `WS_URL`) environment variable.
-
 ## How it works
 
 1. **Normalize** — Accepts `jsonParsed`/`json` objects or `base58`/`base64`/`base64+zstd` encoded tuples, deserializing raw bytes when needed
@@ -228,7 +209,6 @@ bun run lint            # biome lint
 bun run format:check    # prettier check
 bun run verify          # all of the above
 
-bun run stream          # live stream (requires RPC_URL)
 bun run bench           # benchmark (requires RPC_URL)
 ```
 

@@ -1,20 +1,6 @@
 import type { Protocol } from './constants.ts'
 
-// ── Helius WebSocket response types ──
-
-export interface WsNotification {
-  jsonrpc: '2.0'
-  method?: string | undefined
-  params?:
-    | {
-        subscription: number
-        result: TransactionNotification
-      }
-    | undefined
-  result?: number | undefined // subscription confirmation
-  id?: number | undefined
-  error?: { code: number; message: string } | undefined
-}
+// ── Transaction notification types ──
 
 export interface TransactionNotification {
   signature: string

@@ -11,7 +11,6 @@ Solana swap parser library. Parses swaps from 7 DEX protocols using custom IDL-l
 - `bun run format` — Prettier format
 - `bun run format:check` — Prettier format check
 - `bun run verify` — Run all checks (typecheck + lint + format + test)
-- `bun run stream` — Live swap stream (requires `RPC_URL` in `.env`)
 - `bun run bench` — Benchmark parser (requires `RPC_URL` in `.env`)
 
 ## Runtime
@@ -42,18 +41,14 @@ src/
   errors.ts                 # ParserError, DecodeError, ValidationError
   normalize.ts              # Unified format from any encoding
   deserialize.ts            # Raw transaction byte deserialization
-  stream.ts                 # Helius WebSocket subscription + reconnect
   resolvers.ts              # RPC-backed ALT resolver with cache
   amount.ts                 # Decimal formatting utilities
-  deque.ts                  # Queue data structure for stream
-  metrics.ts                # Stream metrics types
   idl/
     codec.ts                # Base58/64, compact u16, discriminator matching
     types.ts                # RawSwap, ParseContext, ProgramParser interface
     registry.ts             # Parser registry — dispatches by program ID
     programs/               # Per-protocol IDL parsers
 tools/
-  stream-cli.ts             # CLI entry point for live streaming
   bench.ts                  # Benchmark script
 test/
   *.test.ts                 # Test files (bun test)
@@ -139,7 +134,7 @@ Follows semver. Version lives in `package.json` and is tracked via git tags (`v0
 
 **Milestone versions:**
 - `0.1.0` — First working parser (can parse a swap end-to-end)
-- `0.2.0` — Real-time WebSocket streaming
+- `0.2.0` — (removed) Real-time WebSocket streaming
 - `0.3.0` — Parser refactored into submodules + strict TypeScript
 - `0.4.0` — Zod-validated public API with barrel export
 - `0.5.0` — Batch transaction parsing API (`parseSwaps`/`parseSwapsDetailed`)

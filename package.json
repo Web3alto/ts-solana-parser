@@ -1,13 +1,12 @@
 {
   "name": "solana-swap-parser",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Zero-dependency Solana swap parser for 7 DEX protocols. Pass in a transaction, get back parsed swap data.",
   "module": "src/lib.ts",
   "types": "src/lib.ts",
   "type": "module",
   "exports": {
-    ".": "./src/lib.ts",
-    "./stream": "./src/stream.ts"
+    ".": "./src/lib.ts"
   },
   "files": [
     "src/",
@@ -22,7 +21,6 @@
     "format": "bunx prettier --write src/ test/ tools/",
     "format:check": "bunx prettier --check src/ test/ tools/",
     "verify": "bun run typecheck && bun run lint && bun run format:check && bun run test",
-    "stream": "bun run tools/stream-cli.ts",
     "bench": "bun run tools/bench.ts"
   },
   "dependencies": {
