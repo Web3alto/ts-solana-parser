@@ -1,6 +1,6 @@
 # solana-swap-parser
 
-Zero-dependency Solana DEX swap parser for Bun. Pass in a transaction, get back structured swap data. Supports 6 protocols out of the box.
+Zero-dependency Solana DEX swap parser for Bun. Pass in a transaction, get back structured swap data. Supports 7 protocols out of the box.
 
 ## Install
 
@@ -34,6 +34,7 @@ if (result) {
 | PumpFun | `6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P` | `pumpfun.ts` |
 | PumpSwap | `pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA` | `pumpswap.ts` |
 | Raydium CPMM | `CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C` | `raydium-cpmm.ts` |
+| Raydium CLMM | `CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK` | `raydium-clmm.ts` |
 | Raydium LaunchLab | `LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj` | `raydium-launchlab.ts` |
 | Meteora DBC | `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` | `meteora-dbc.ts` |
 | Meteora DAMMv2 | `cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG` | `meteora-dammv2.ts` |
@@ -70,6 +71,33 @@ switch (outcome.kind) {
   case 'not_swap':    // not a swap (outcome.code explains why)
   case 'unsupported': // encoding or version not supported
   case 'error':       // internal error (outcome.errorMessage)
+}
+```
+
+### `parseSwaps(inputs, options?)` → `Promise<(ParsedSwap | null)[]>`
+
+Batch version of `parseSwap`. Validates each input individually — one bad transaction does not abort the batch. Pre-warms address lookup tables across all transactions in a single call. Results are index-correlated: `results[i]` corresponds to `inputs[i]`.
+
+```ts
+import { parseSwaps } from 'solana-swap-parser'
+
+const results = await parseSwaps([input1, input2, input3], options)
+// results[0] → ParsedSwap | null for input1
+// results[1] → ParsedSwap | null for input2
+// ...
+```
+
+### `parseSwapsDetailed(inputs, options?)` → `Promise<ParseOutcome[]>`
+
+Batch version of `parseSwapDetailed`. Same per-item error handling and ALT pre-warming as `parseSwaps`, but returns detailed outcomes.
+
+```ts
+import { parseSwapsDetailed } from 'solana-swap-parser'
+
+const outcomes = await parseSwapsDetailed([input1, input2], options)
+for (const outcome of outcomes) {
+  if (outcome.kind === 'swap') console.log(outcome.swap)
+  if (outcome.kind === 'error') console.log(outcome.errorMessage)
 }
 ```
 

@@ -10,6 +10,7 @@ import { encodeIxData, u64le } from './helpers.ts'
 const PUMPFUN_BUY_DISC = [102, 6, 61, 18, 1, 218, 235, 234] as const
 const PUMPSWAP_BUY_DISC = [102, 6, 61, 18, 1, 218, 235, 234] as const
 const RAYDIUM_CPMM_SWAP_BASE_INPUT_DISC = [143, 190, 90, 218, 196, 30, 51, 222] as const
+const RAYDIUM_CLMM_SWAP_V2_DISC = [43, 4, 237, 11, 26, 201, 30, 98] as const
 const RAYDIUM_LAUNCHLAB_BUY_EXACT_IN_DISC = [250, 234, 13, 123, 213, 156, 19, 236] as const
 const METEORA_SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const
 
@@ -18,6 +19,7 @@ const METEORA_SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const
 const PUMPFUN_PROGRAM = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P'
 const PUMPSWAP_PROGRAM = 'pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA'
 const RAYDIUM_CPMM_PROGRAM = 'CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C'
+const RAYDIUM_CLMM_PROGRAM = 'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK'
 const RAYDIUM_LAUNCHLAB_PROGRAM = 'LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj'
 const METEORA_DBC_PROGRAM = 'dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN'
 const METEORA_DAMMV2_PROGRAM = 'cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG'
@@ -248,6 +250,80 @@ describe('integration: end-to-end per protocol', () => {
     expect(swap.outputMint).toBe(TOKEN_MINT)
     expect(swap.inputRaw).toBe('50000000')
     expect(swap.outputRaw).toBe('250000')
+    expect(swap.user).toBe(USER)
+    expect(swap.pool).toBe(POOL)
+    expect(swap.confidence).toBe('medium')
+  })
+
+  test('Raydium CLMM buy', () => {
+    // Raydium CLMM swap_v2: user sends WSOL (input mint), receives token (output mint).
+    // Account layout: [0]=payer, [1]=ammConfig, [2]=poolState, [3]=inputTokenAccount,
+    //                  [4]=outputTokenAccount, [5]=inputVault, [6]=outputVault,
+    //                  [7]=observationState, [8]=tokenProgram, [9]=tokenProgram2022,
+    //                  [10]=memoProgram, [11]=inputVaultMint, [12]=outputVaultMint
+    // POOL_ACCOUNT_INDEX = 2
+    const amountIn = 75_000_000n // 0.075 SOL
+    const minAmountOut = 350_000n
+
+    const data = encodeIxData([...RAYDIUM_CLMM_SWAP_V2_DISC], amountIn, minAmountOut)
+
+    const accounts = [
+      USER, // 0 payer (signer)
+      'AmmConfig31111111111111111111111111111111111', // 1 ammConfig
+      POOL, // 2 poolState (pool)
+      'InputTokenAcct31111111111111111111111111111', // 3 inputTokenAccount
+      'OutputTokenAcc31111111111111111111111111111', // 4 outputTokenAccount
+      'InputVault31111111111111111111111111111111111', // 5 inputVault
+      'OutputVault3111111111111111111111111111111111', // 6 outputVault
+      'Observation3111111111111111111111111111111111', // 7 observationState
+      'TokenProgram311111111111111111111111111111111', // 8 tokenProgram
+      'TokenProg202231111111111111111111111111111111', // 9 tokenProgram2022
+      'MemoProgram3111111111111111111111111111111111', // 10 memoProgram
+      WSOL_MINT, // 11 inputVaultMint (WSOL = buying)
+      TOKEN_MINT, // 12 outputVaultMint
+    ]
+
+    // Native SOL only drops by fee. WSOL token balance carries the swap amount.
+    const notification: TransactionNotification = {
+      signature: 'raydium-clmm-buy-sig',
+      slot: 350,
+      transaction: {
+        meta: {
+          err: null,
+          fee: 5000,
+          preBalances: [1_000_000_000],
+          postBalances: [1_000_000_000 - 5000],
+          preTokenBalances: [tb(0, TOKEN_MINT, '0', 6, USER), tb(0, WSOL_MINT, '75000000', 9, USER)],
+          postTokenBalances: [tb(0, TOKEN_MINT, '350000', 6, USER), tb(0, WSOL_MINT, '0', 9, USER)],
+          innerInstructions: [],
+          loadedAddresses: null,
+        },
+        transaction: {
+          signatures: ['raydium-clmm-buy-sig'],
+          message: {
+            accountKeys: [USER],
+            recentBlockhash: '11111111111111111111111111111111',
+            instructions: [
+              {
+                programId: RAYDIUM_CLMM_PROGRAM,
+                accounts,
+                data,
+              },
+            ],
+          },
+        },
+      },
+    }
+
+    const outcome = parseTransactionDetailed(notification)
+
+    expect(outcome.kind).toBe('swap')
+    const swap = outcome.swap!
+    expect(swap.swapType).toBe('raydium-clmm-buy')
+    expect(swap.inputMint).toBe(SOL_MINT)
+    expect(swap.outputMint).toBe(TOKEN_MINT)
+    expect(swap.inputRaw).toBe('75000000')
+    expect(swap.outputRaw).toBe('350000')
     expect(swap.user).toBe(USER)
     expect(swap.pool).toBe(POOL)
     expect(swap.confidence).toBe('medium')

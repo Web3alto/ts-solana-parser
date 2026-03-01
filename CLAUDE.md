@@ -1,6 +1,6 @@
 # solana-swap-parser
 
-Solana swap parser library. Parses swaps from 6 DEX protocols using custom IDL-level instruction decoding. Zod-validated public API with zero-overhead internal parsing.
+Solana swap parser library. Parses swaps from 7 DEX protocols using custom IDL-level instruction decoding. Zod-validated public API with zero-overhead internal parsing.
 
 ## Commands
 
@@ -71,6 +71,7 @@ Consumer → src/lib.ts (barrel) → src/parse-swap.ts (Zod validation) → src/
 ```
 
 - `parseSwap()` / `parseSwapDetailed()` — Validated API with Zod schemas at the boundary
+- `parseSwaps()` / `parseSwapsDetailed()` — Async batch API with ALT pre-warming across all transactions
 - `parseTransaction()` / `parseTransactionDetailed()` — Core API, no validation overhead
 
 ### Parser pipeline (parser.ts)
@@ -116,7 +117,7 @@ Registry (`registry.ts`) maps program ID → parser. `tryParseInstruction()` dec
 - `SwapInput` — Validated convenience API input type
 - `RawSwap` — IDL-level result (type, tokenFrom/To, amountFrom/To, signer)
 - `SwapType` — Union of `{protocol}-buy` | `{protocol}-sell` strings
-- `Protocol` — Enum: PumpFun, PumpSwap, RaydiumCPMM, RaydiumLaunchLab, MeteoraDBC, MeteoraDAMMv2
+- `Protocol` — Enum: PumpFun, PumpSwap, RaydiumCPMM, RaydiumCLMM, RaydiumLaunchLab, MeteoraDBC, MeteoraDAMMv2
 - `TokenChange` — `{ mint, rawDelta: bigint, decimals }` (readonly)
 
 ### Key constants (constants.ts)
@@ -141,6 +142,8 @@ Follows semver. Version lives in `package.json` and is tracked via git tags (`v0
 - `0.2.0` — Real-time WebSocket streaming
 - `0.3.0` — Parser refactored into submodules + strict TypeScript
 - `0.4.0` — Zod-validated public API with barrel export
+- `0.5.0` — Batch transaction parsing API (`parseSwaps`/`parseSwapsDetailed`)
+- `0.6.0` — Raydium CLMM protocol support (7th protocol)
 
 ## Conventions
 

@@ -8,6 +8,7 @@ import { encodeIxData, tokenBalance, u64le } from './helpers.ts'
 const PUMPFUN_PROGRAM = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P'
 const PUMPSWAP_PROGRAM = 'pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA'
 const RAYDIUM_CPMM_PROGRAM = 'CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C'
+const RAYDIUM_CLMM_PROGRAM = 'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK'
 const RAYDIUM_LAUNCHLAB_PROGRAM = 'LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj'
 const METEORA_DBC_PROGRAM = 'dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN'
 const METEORA_DAMMV2_PROGRAM = 'cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG'
@@ -369,6 +370,79 @@ describe('IDL registry', () => {
     expect(parsed?.tokenTo).toBe(mintB)
     expect(parsed?.amountFrom).toBe(exactIn)
     expect(parsed?.amountTo).toBe(minOut)
+    expect(parsed?.signer).toBe(signer)
+  })
+
+  test('parses Raydium CLMM swap_v2 buy', () => {
+    const SWAP_V2_DISC = [43, 4, 237, 11, 26, 201, 30, 98] as const
+    const signer = 'User111111111111111111111111111111111111111'
+    const outputMint = 'Out1111111111111111111111111111111111111111'
+    const accounts = new Array<string>(13).fill('x')
+    accounts[0] = signer
+    accounts[11] = WSOL_MINT // input_vault_mint
+    accounts[12] = outputMint // output_vault_mint
+    const data = encodeIxData(SWAP_V2_DISC, 1_000_000_000n, 50_000n)
+
+    const parsed = tryParseInstruction(RAYDIUM_CLMM_PROGRAM, accounts, data)
+
+    expect(parsed).not.toBeNull()
+    expect(parsed?.type).toBe('raydium-clmm-buy')
+    expect(parsed?.tokenFrom).toBe(WSOL_MINT)
+    expect(parsed?.tokenTo).toBe(outputMint)
+    expect(parsed?.amountFrom).toBe(1_000_000_000n)
+    expect(parsed?.amountTo).toBe(50_000n)
+    expect(parsed?.signer).toBe(signer)
+  })
+
+  test('parses Raydium CLMM swap_v2 sell', () => {
+    const SWAP_V2_DISC = [43, 4, 237, 11, 26, 201, 30, 98] as const
+    const signer = 'User111111111111111111111111111111111111111'
+    const inputMint = 'Tkn1111111111111111111111111111111111111111'
+    const accounts = new Array<string>(13).fill('x')
+    accounts[0] = signer
+    accounts[11] = inputMint // input_vault_mint
+    accounts[12] = WSOL_MINT // output_vault_mint
+    const data = encodeIxData(SWAP_V2_DISC, 500_000n, 2_000_000_000n)
+
+    const parsed = tryParseInstruction(RAYDIUM_CLMM_PROGRAM, accounts, data)
+
+    expect(parsed).not.toBeNull()
+    expect(parsed?.type).toBe('raydium-clmm-sell')
+    expect(parsed?.tokenFrom).toBe(inputMint)
+    expect(parsed?.tokenTo).toBe(WSOL_MINT)
+    expect(parsed?.amountFrom).toBe(500_000n)
+    expect(parsed?.amountTo).toBe(2_000_000_000n)
+    expect(parsed?.signer).toBe(signer)
+  })
+
+  test('parses Raydium CLMM deprecated swap via balance context', () => {
+    const SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const
+    const signer = 'User111111111111111111111111111111111111111'
+    const tokenMint = 'Tkn1111111111111111111111111111111111111111'
+    const inputTokenAccount = 'InputTknAcc111111111111111111111111111111'
+    const outputTokenAccount = 'OutputTknAc111111111111111111111111111111'
+    const accounts = new Array<string>(10).fill('x')
+    accounts[0] = signer
+    accounts[3] = inputTokenAccount
+    accounts[4] = outputTokenAccount
+    const data = encodeIxData(SWAP_DISC, 1_500_000_000n, 75_000n)
+
+    // allKeys maps accountIndex → key. Token balances use accountIndex to link.
+    const allKeys = [signer, 'x', inputTokenAccount, outputTokenAccount]
+    const ctx: ParseContext = {
+      allKeys,
+      preTokenBalances: [tokenBalance(2, WSOL_MINT), tokenBalance(3, tokenMint)],
+      postTokenBalances: [],
+    }
+
+    const parsed = tryParseInstruction(RAYDIUM_CLMM_PROGRAM, accounts, data, ctx)
+
+    expect(parsed).not.toBeNull()
+    expect(parsed?.type).toBe('raydium-clmm-buy')
+    expect(parsed?.tokenFrom).toBe(WSOL_MINT)
+    expect(parsed?.tokenTo).toBe(tokenMint)
+    expect(parsed?.amountFrom).toBe(1_500_000_000n)
+    expect(parsed?.amountTo).toBe(75_000n)
     expect(parsed?.signer).toBe(signer)
   })
 
