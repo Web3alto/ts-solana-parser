@@ -50,13 +50,13 @@ export function collectIdlCandidates(allInstructions: Instruction[], ctx: ParseC
   return out
 }
 
-export function classifyConfidence(score: number): 'high' | 'medium' | 'low' {
+function classifyConfidence(score: number): 'high' | 'medium' | 'low' {
   if (score >= 10) return 'high'
   if (score >= 6) return 'medium'
   return 'low'
 }
 
-export function scoreCandidate(candidate: IdlCandidate, state: OwnerTokenState, feePayer: string): number {
+function scoreCandidate(candidate: IdlCandidate, state: OwnerTokenState, feePayer: string): number {
   const userDeltas = state.deltasByOwner.get(candidate.swap.signer)
   if (!userDeltas) return -3
 

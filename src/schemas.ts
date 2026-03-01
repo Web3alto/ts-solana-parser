@@ -31,6 +31,8 @@ export const TransactionMetaSchema = z.object({
       readonly: z.array(z.string()).nullish(),
     })
     .nullish(),
+  logMessages: z.array(z.string()).nullish(),
+  computeUnitsConsumed: z.number().nonnegative().nullish(),
 })
 
 export const EncodedTransactionTupleSchema = z.tuple([z.string(), z.enum(['base58', 'base64', 'base64+zstd'])])

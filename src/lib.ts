@@ -23,6 +23,7 @@ export { parseFullSwapTransaction, parseSwap, parseSwapDetailed, parseSwaps, par
 // Full transaction parsing (no validation -- use when you trust the input)
 export { parseFullTransaction } from './parse-transaction-full.ts'
 export { parseTransaction, parseTransactionDetailed } from './parser.ts'
+export type { ResolverConfig, RpcBackedParserOptions } from './resolvers.ts'
 // RPC resolver factory
 export { createRpcBackedParserOptions } from './resolvers.ts'
 // Zod schemas (for consumers who want to validate their own data)

@@ -13,7 +13,13 @@ import {
 import { _parseTransactionWithPrepared } from './parser.ts'
 import { TransactionNotificationSchema, validateWithZod } from './schemas.ts'
 import { detectTips } from './tips.ts'
-import type { CompiledInstruction, Instruction, ParserOptions, TransactionNotification } from './types.ts'
+import type {
+  CompiledInstruction,
+  Instruction,
+  ParserOptions,
+  TransactionMessage,
+  TransactionNotification,
+} from './types.ts'
 
 export function parseFullTransaction(
   notification: TransactionNotification,
@@ -27,7 +33,7 @@ export function parseFullTransaction(
   }
 
   // 2. Normalize transaction data
-  let message: import('./types.ts').TransactionMessage
+  let message: TransactionMessage
   try {
     ;({ message } = normalizeTransactionData(notification.transaction.transaction))
   } catch {

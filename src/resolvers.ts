@@ -1,5 +1,7 @@
 import { getAddressLookupTableDecoder } from '@solana-program/address-lookup-table'
+import { z } from 'zod'
 import { decodeBase64 } from './idl/codec.ts'
+import { validateWithZod } from './schemas.ts'
 import type { AddressLookupResolution, AddressTableLookup, ParserOptions } from './types.ts'
 import { sleep } from './util.ts'
 
@@ -23,7 +25,7 @@ interface AddressLookupCacheEntry {
   addresses: string[]
 }
 
-interface ResolverConfig {
+export interface ResolverConfig {
   rpcUrl: string
   cacheTtlMs?: number | undefined
   maxCacheEntries?: number | undefined
@@ -231,7 +233,18 @@ class RpcAddressLookupResolver {
   }
 }
 
+const ResolverConfigSchema = z.object({
+  rpcUrl: z.string().url(),
+  cacheTtlMs: z.number().positive().optional(),
+  maxCacheEntries: z.number().int().positive().optional(),
+  commitment: z.enum(['processed', 'confirmed', 'finalized']).optional(),
+  requestTimeoutMs: z.number().positive().optional(),
+  retries: z.number().int().nonnegative().optional(),
+  retryBaseMs: z.number().positive().optional(),
+})
+
 export function createRpcBackedParserOptions(config: ResolverConfig): RpcBackedParserOptions {
+  validateWithZod(ResolverConfigSchema, config)
   const resolver = new RpcAddressLookupResolver(config)
   return {
     resolveAddressTableLookups: resolver.resolveAddressTableLookups.bind(resolver),

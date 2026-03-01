@@ -140,14 +140,16 @@ export interface InputOutputResult {
 export function selectInputOutputChanges(
   merged: TokenChange[],
   selectedIdl: IdlSelection | null,
+  /** Pre-normalized IDL mints to avoid redundant normalization */
+  normalizedIdlMints?: { from: string; to: string },
 ): InputOutputResult | null {
   const inputs = merged.filter((c) => c.rawDelta < 0n)
   const outputs = merged.filter((c) => c.rawDelta > 0n)
   if (inputs.length === 0 || outputs.length === 0) return null
 
   if (selectedIdl) {
-    const idlFrom = normalizeMint(selectedIdl.candidate.swap.tokenFrom)
-    const idlTo = normalizeMint(selectedIdl.candidate.swap.tokenTo)
+    const idlFrom = normalizedIdlMints?.from ?? normalizeMint(selectedIdl.candidate.swap.tokenFrom)
+    const idlTo = normalizedIdlMints?.to ?? normalizeMint(selectedIdl.candidate.swap.tokenTo)
     const anchoredInput = inputs.find((c) => c.mint === idlFrom)
     const anchoredOutput = outputs.find((c) => c.mint === idlTo)
     if (anchoredInput && anchoredOutput) {

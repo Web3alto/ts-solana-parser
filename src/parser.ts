@@ -190,7 +190,15 @@ export function parseTransactionDetailed(
     const solChange = computeSolChange(meta, ctx.keyIndexMap, user)
     const merged = mergeChanges(tokenChanges, solChange)
     if (merged.length === 0) return makeOutcome('not_swap', warnings, 'NO_BALANCE_DELTA')
-    const selectedPair = selectInputOutputChanges(merged, selectedIdl)
+
+    // Normalize IDL mints once, reuse for both selectInputOutputChanges and swap type detection
+    const idlMints = selectedIdl
+      ? {
+          from: normalizeMint(selectedIdl.candidate.swap.tokenFrom),
+          to: normalizeMint(selectedIdl.candidate.swap.tokenTo),
+        }
+      : undefined
+    const selectedPair = selectInputOutputChanges(merged, selectedIdl, idlMints)
     if (!selectedPair) return makeOutcome('not_swap', warnings, 'NO_INPUT_OUTPUT_PAIR')
     const { input, output } = selectedPair
     for (const w of selectedPair.warnings) warnings.push(w)
@@ -204,13 +212,10 @@ export function parseTransactionDetailed(
     const outputAmountDecimal = formatTokenAmountDecimal(outputRaw, output.decimals)
 
     let swapType: SwapType | undefined
-    if (selectedIdl) {
-      // input.mint and output.mint are already normalized by mergeChanges
-      const idlFrom = normalizeMint(selectedIdl.candidate.swap.tokenFrom)
-      const idlTo = normalizeMint(selectedIdl.candidate.swap.tokenTo)
-      const flipped = idlFrom === output.mint && idlTo === input.mint
+    if (selectedIdl && idlMints) {
+      const flipped = idlMints.from === output.mint && idlMints.to === input.mint
 
-      if (idlFrom === input.mint && idlTo === output.mint) {
+      if (idlMints.from === input.mint && idlMints.to === output.mint) {
         swapType = selectedIdl.candidate.swap.type
       } else if (flipped) {
         swapType = selectedIdl.candidate.swap.type

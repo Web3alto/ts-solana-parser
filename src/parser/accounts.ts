@@ -81,15 +81,6 @@ export function buildFullAccountKeys(message: TransactionMessage, meta: Normaliz
   return base
 }
 
-export function buildAccountIndexMap(fullKeys: string[]): Map<string, number> {
-  const out = new Map<string, number>()
-  for (let i = 0; i < fullKeys.length; i++) {
-    const key = fullKeys[i]
-    if (key !== undefined && !out.has(key)) out.set(key, i)
-  }
-  return out
-}
-
 export function isCompiledInstruction(instr: Instruction): instr is CompiledInstruction {
   return 'programIdIndex' in instr
 }

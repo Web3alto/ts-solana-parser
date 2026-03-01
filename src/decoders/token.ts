@@ -27,11 +27,10 @@ export function decodeTokenInstruction(
 ): TokenInstruction | null {
   if (data.length === 0) return null
 
-  const program: 'spl-token' | 'token-2022' =
-    programId === TOKEN_2022_PROGRAM ? 'token-2022' : programId === SPL_TOKEN_PROGRAM ? 'spl-token' : 'spl-token'
-
   // Only handle known token programs
   if (programId !== SPL_TOKEN_PROGRAM && programId !== TOKEN_2022_PROGRAM) return null
+
+  const program: 'spl-token' | 'token-2022' = programId === TOKEN_2022_PROGRAM ? 'token-2022' : 'spl-token'
 
   const instruction = data[0]
 

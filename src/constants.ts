@@ -24,8 +24,6 @@ export const PROGRAM_ID_TO_PROTOCOL = {
   Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB: Protocol.MeteoraDAMM,
 } as const satisfies Record<string, Protocol>
 
-export const ALL_PROGRAM_IDS = Object.keys(PROGRAM_ID_TO_PROTOCOL)
-
 /**
  * Synthetic SOL mint address used internally to represent native SOL.
  * This is NOT the on-chain Wrapped SOL (WSOL) mint. Consumers must compare
