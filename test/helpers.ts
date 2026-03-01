@@ -1,6 +1,17 @@
 import { encodeBase58 } from '../src/idl/codec.ts'
 import type { ParseContext } from '../src/idl/types.ts'
-import type { TokenBalance } from '../src/types.ts'
+import type { SwapInput } from '../src/parse-swap.ts'
+import type { TokenBalance, TransactionNotification } from '../src/types.ts'
+
+export function notificationToSwapInput(n: TransactionNotification): SwapInput {
+  return {
+    transaction: n.transaction.transaction,
+    meta: n.transaction.meta,
+    signature: n.signature,
+    slot: n.slot,
+    blockTime: n.blockTime,
+  }
+}
 
 export function buildMinimalTxBytes(): Uint8Array {
   const bytes: number[] = []

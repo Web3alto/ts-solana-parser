@@ -42,9 +42,6 @@ import type {
   WarningCode,
 } from './types.ts'
 
-// Re-export used by tests
-export { findSwapUser } from './parser/user.ts'
-
 function makeOutcome(
   kind: ParseOutcome['kind'],
   warnings: WarningCode[],
@@ -275,12 +272,6 @@ export function parseTransactionDetailed(
     }
     return makeOutcome('error', warnings, 'INTERNAL_ERROR', String(err))
   }
-}
-
-/** Parse a swap from a `TransactionNotification`. Validates with Zod internally. Returns `ParsedSwap | null`. */
-export function parseTransaction(notification: TransactionNotification, options?: ParserOptions): ParsedSwap | null {
-  const outcome = parseTransactionDetailed(notification, options)
-  return outcome.swap ?? null
 }
 
 /** @internal Used by parseFullTransaction to avoid double normalization */

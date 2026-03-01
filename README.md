@@ -154,16 +154,6 @@ if (result) {
 }
 ```
 
-### Unvalidated API
-
-These functions take a `TransactionNotification` directly and skip Zod validation. Use when you trust the input source.
-
-#### `parseTransaction(notification, options?)` → `ParsedSwap | null`
-
-#### `parseTransactionDetailed(notification, options?)` → `ParseOutcome`
-
-#### `parseFullTransaction(notification, options?)` → `FullTransactionResult | null`
-
 ### Options
 
 ```ts

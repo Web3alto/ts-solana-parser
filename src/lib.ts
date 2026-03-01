@@ -20,10 +20,6 @@ export type {
 export type { SwapInput } from './parse-swap.ts'
 // Validated convenience API (Zod validation at boundary)
 export { parseFullSwapTransaction, parseSwap, parseSwapDetailed, parseSwaps, parseSwapsDetailed } from './parse-swap.ts'
-// Full transaction parsing (no validation -- use when you trust the input)
-export { parseFullTransaction } from './parse-transaction-full.ts'
-// Transaction parsing (validates with Zod internally)
-export { parseTransaction, parseTransactionDetailed } from './parser.ts'
 export type { ResolverConfig, RpcBackedParserOptions } from './resolvers.ts'
 // RPC resolver factory
 export { createRpcBackedParserOptions } from './resolvers.ts'

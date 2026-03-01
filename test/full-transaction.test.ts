@@ -2,9 +2,9 @@ import { describe, expect, test } from 'bun:test'
 import { SOL_MINT } from '../src/constants.ts'
 import { encodeBase58 } from '../src/idl/codec.ts'
 import type { DecodedInstruction } from '../src/instruction-types.ts'
-import { parseFullTransaction } from '../src/parse-transaction-full.ts'
+import { parseFullSwapTransaction } from '../src/parse-swap.ts'
 import type { TokenBalance, TransactionNotification } from '../src/types.ts'
-import { encodeIxData } from './helpers.ts'
+import { encodeIxData, notificationToSwapInput } from './helpers.ts'
 
 // Helper to access instruction-specific fields without `as any`
 function f(instr: DecodedInstruction): Record<string, unknown> {
@@ -57,7 +57,7 @@ const PUMPFUN_BUY_DISC = [102, 6, 61, 18, 1, 218, 235, 234] as const
 
 // ── Tests ──
 
-describe('parseFullTransaction: non-swap transactions', () => {
+describe('parseFullSwapTransaction: non-swap transactions', () => {
   test('system transfer produces correct instructions and no swap', () => {
     const transferData = buildTransferSolData(5000n)
     const dataBase58 = encodeBase58(transferData)
@@ -92,7 +92,7 @@ describe('parseFullTransaction: non-swap transactions', () => {
       },
     }
 
-    const result = parseFullTransaction(notification)
+    const result = parseFullSwapTransaction(notificationToSwapInput(notification))
 
     expect(result).not.toBeNull()
     expect(result!.signature).toBe('test-system-transfer-sig')
@@ -163,7 +163,7 @@ describe('parseFullTransaction: non-swap transactions', () => {
       },
     }
 
-    const result = parseFullTransaction(notification)
+    const result = parseFullSwapTransaction(notificationToSwapInput(notification))
 
     expect(result).not.toBeNull()
     expect(result!.instructions).toHaveLength(2)
@@ -239,7 +239,7 @@ describe('parseFullTransaction: non-swap transactions', () => {
       },
     }
 
-    const result = parseFullTransaction(notification)
+    const result = parseFullSwapTransaction(notificationToSwapInput(notification))
 
     expect(result).not.toBeNull()
     expect(result!.instructions).toHaveLength(3)
@@ -265,7 +265,7 @@ describe('parseFullTransaction: non-swap transactions', () => {
   })
 })
 
-describe('parseFullTransaction: swap transactions', () => {
+describe('parseFullSwapTransaction: swap transactions', () => {
   test('PumpFun buy produces instructions and swap field', () => {
     const solSpent = 100_000_000n
     const tokenReceived = 500_000n
@@ -312,7 +312,7 @@ describe('parseFullTransaction: swap transactions', () => {
       },
     }
 
-    const result = parseFullTransaction(notification)
+    const result = parseFullSwapTransaction(notificationToSwapInput(notification))
 
     expect(result).not.toBeNull()
     expect(result!.signature).toBe('full-pumpfun-buy-sig')
@@ -338,7 +338,7 @@ describe('parseFullTransaction: swap transactions', () => {
   })
 })
 
-describe('parseFullTransaction: result structure', () => {
+describe('parseFullSwapTransaction: result structure', () => {
   test('legacy transaction has version "legacy"', () => {
     const transferData = buildTransferSolData(1000n)
 
@@ -372,7 +372,7 @@ describe('parseFullTransaction: result structure', () => {
       },
     }
 
-    const result = parseFullTransaction(notification)
+    const result = parseFullSwapTransaction(notificationToSwapInput(notification))
 
     expect(result).not.toBeNull()
     expect(result!.version).toBe('legacy')
@@ -418,7 +418,7 @@ describe('parseFullTransaction: result structure', () => {
       },
     }
 
-    const result = parseFullTransaction(notification)
+    const result = parseFullSwapTransaction(notificationToSwapInput(notification))
 
     expect(result).not.toBeNull()
     expect(result!.version).toBe(0)
@@ -457,7 +457,7 @@ describe('parseFullTransaction: result structure', () => {
       },
     }
 
-    const result = parseFullTransaction(notification)
+    const result = parseFullSwapTransaction(notificationToSwapInput(notification))
 
     expect(result).not.toBeNull()
     expect(result!.err).not.toBeNull()
@@ -498,7 +498,7 @@ describe('parseFullTransaction: result structure', () => {
       },
     }
 
-    const result = parseFullTransaction(notification)
+    const result = parseFullSwapTransaction(notificationToSwapInput(notification))
 
     expect(result).not.toBeNull()
     expect(result!.blockTime).toBe(1700000000)
@@ -537,7 +537,7 @@ describe('parseFullTransaction: result structure', () => {
       },
     }
 
-    const result = parseFullTransaction(notification)
+    const result = parseFullSwapTransaction(notificationToSwapInput(notification))
 
     expect(result).not.toBeNull()
     const entry = result!.instructions[0]!
@@ -605,7 +605,7 @@ describe('parseFullTransaction: result structure', () => {
       },
     }
 
-    const result = parseFullTransaction(notification)
+    const result = parseFullSwapTransaction(notificationToSwapInput(notification))
 
     expect(result).not.toBeNull()
     expect(result!.instructions).toHaveLength(1)
@@ -643,7 +643,7 @@ describe('parseFullTransaction: result structure', () => {
       },
     }
 
-    const result = parseFullTransaction(notification)
+    const result = parseFullSwapTransaction(notificationToSwapInput(notification))
     expect(result).toBeNull()
   })
 
@@ -685,7 +685,7 @@ describe('parseFullTransaction: result structure', () => {
       },
     }
 
-    const result = parseFullTransaction(notification)
+    const result = parseFullSwapTransaction(notificationToSwapInput(notification))
 
     expect(result).not.toBeNull()
     expect(result!.logMessages).toBeDefined()

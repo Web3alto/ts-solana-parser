@@ -1,4 +1,4 @@
-import { parseTransaction } from '../../src/parser.ts'
+import { parseSwap } from '../../src/parse-swap.ts'
 import type { TransactionNotification } from '../../src/types.ts'
 
 const TOKEN = '2UcQk67vPDUp5VtTpjnbE12nhwvrFkV62Z2Qq5Wtpump'
@@ -77,7 +77,14 @@ for (let i = 0; i < signatures.length; i++) {
     if (i > 0 && i % 10 === 0) await sleep(50)
 
     const notification = await fetchTx(sig)
-    const swap = parseTransaction(notification)
+    const input = {
+      transaction: notification.transaction.transaction,
+      meta: notification.transaction.meta,
+      signature: sig,
+      slot: notification.slot,
+      blockTime: notification.blockTime,
+    }
+    const swap = parseSwap(input)
 
     if (swap) {
       parsed++

@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { PROGRAM_ID_TO_PROTOCOL, Protocol } from '../../src/constants.ts'
-import { parseTransaction } from '../../src/parser.ts'
+import { parseSwap } from '../../src/parse-swap.ts'
 import { getSignaturesForAddress, getTransaction } from './lib/rpc.ts'
 import { type FixtureEntry, PROTOCOL_DIRS } from './lib/types.ts'
 
@@ -37,7 +37,14 @@ async function harvestProtocol(protocol: Protocol): Promise<number> {
     try {
       await sleep(DELAY_MS)
       const notification = await getTransaction(sig)
-      const parsed = parseTransaction(notification)
+      const input = {
+        transaction: notification.transaction.transaction,
+        meta: notification.transaction.meta,
+        signature: sig,
+        slot: notification.slot,
+        blockTime: notification.blockTime,
+      }
+      const parsed = parseSwap(input)
 
       if (!parsed) continue
 

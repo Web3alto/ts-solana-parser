@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Protocol } from '../../src/constants.ts'
-import { parseTransaction } from '../../src/parser.ts'
+import { parseSwap } from '../../src/parse-swap.ts'
 import type { ParsedSwap } from '../../src/types.ts'
 import { compareSwapWithSolscan } from './lib/compare.ts'
 import { getSignaturesForAddressPaginated, getTransaction } from './lib/rpc.ts'
@@ -81,7 +81,14 @@ async function fetchAndParse(protocol: Protocol): Promise<ParsedEntry[]> {
 
       try {
         const tx = await getTransaction(sig)
-        const parsed = parseTransaction(tx)
+        const input = {
+          transaction: tx.transaction.transaction,
+          meta: tx.transaction.meta,
+          signature: sig,
+          slot: tx.slot,
+          blockTime: tx.blockTime,
+        }
+        const parsed = parseSwap(input)
         if (!parsed) continue
 
         // Filter: single-protocol swap matching our target

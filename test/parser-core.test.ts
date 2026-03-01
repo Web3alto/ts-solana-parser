@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 import { zstdCompressSync } from 'node:zlib'
 import { formatTokenAmountDecimal } from '../src/amount.ts'
-import { UnsupportedEncodingError } from '../src/errors.ts'
+import { UnsupportedEncodingError, ValidationError } from '../src/errors.ts'
 import { decodeBase58, encodeBase58 } from '../src/idl/codec.ts'
 import { normalizeTransactionData } from '../src/normalize.ts'
-import { parseTransaction } from '../src/parser.ts'
+import { parseSwap } from '../src/parse-swap.ts'
 import type { EncodedTransactionTuple, TransactionNotification } from '../src/types.ts'
-import { buildMinimalTxBytes } from './helpers.ts'
+import { buildMinimalTxBytes, notificationToSwapInput } from './helpers.ts'
 
 describe('normalizeTransactionData', () => {
   test('returns identical decoded message for base58 and base64', () => {
@@ -63,7 +63,7 @@ describe('decoder safety', () => {
   })
 })
 
-describe('parseTransaction', () => {
+describe('parseSwap (core)', () => {
   test('is null-safe when token balance and inner instruction arrays are null', () => {
     const notification: TransactionNotification = {
       signature: 'sig',
@@ -90,10 +90,10 @@ describe('parseTransaction', () => {
       },
     }
 
-    expect(parseTransaction(notification)).toBeNull()
+    expect(parseSwap(notificationToSwapInput(notification))).toBeNull()
   })
 
-  test('returns null on unsupported transaction encoding', () => {
+  test('throws ValidationError on unsupported transaction encoding', () => {
     const raw = buildMinimalTxBytes()
     const encoded = encodeBase58(raw)
 
@@ -115,7 +115,7 @@ describe('parseTransaction', () => {
       },
     } as unknown as TransactionNotification
 
-    expect(parseTransaction(notification)).toBeNull()
+    expect(() => parseSwap(notificationToSwapInput(notification))).toThrow(ValidationError)
   })
 
   test('returns null for malformed encoded transaction bytes', () => {
@@ -138,7 +138,7 @@ describe('parseTransaction', () => {
       },
     } as unknown as TransactionNotification
 
-    expect(parseTransaction(notification)).toBeNull()
+    expect(parseSwap(notificationToSwapInput(notification))).toBeNull()
   })
 })
 

@@ -1,12 +1,14 @@
 import { describe, expect, test } from 'bun:test'
+import { ValidationError } from '../src/errors.ts'
 import { encodeBase58 } from '../src/idl/codec.ts'
+import { parseSwap, parseSwapDetailed } from '../src/parse-swap.ts'
 import type { NormalizedTransactionMeta } from '../src/parser/accounts.ts'
 import type { OwnerTokenState } from '../src/parser/balance.ts'
-import { findSwapUser, parseTransaction, parseTransactionDetailed } from '../src/parser.ts'
+import { findSwapUser } from '../src/parser/user.ts'
 import type { EncodedTransactionTuple, TransactionNotification } from '../src/types.ts'
-import { buildMinimalTxBytes, u64le } from './helpers.ts'
+import { buildMinimalTxBytes, notificationToSwapInput, u64le } from './helpers.ts'
 
-describe('parseTransactionDetailed', () => {
+describe('parseSwapDetailed (detailed)', () => {
   test('findSwapUser prefers plausible signer user over vault-like authority', () => {
     const state = {
       deltasByOwner: new Map<string, Map<string, bigint>>([
@@ -49,7 +51,7 @@ describe('parseTransactionDetailed', () => {
     expect(selected).toBe('user')
   })
 
-  test('classifies unsupported encoding', () => {
+  test('rejects unsupported encoding with ValidationError', () => {
     const raw = buildMinimalTxBytes()
     const tuple = [encodeBase58(raw), 'base85'] as unknown as EncodedTransactionTuple
 
@@ -71,10 +73,8 @@ describe('parseTransactionDetailed', () => {
       },
     } as unknown as TransactionNotification
 
-    const outcome = parseTransactionDetailed(notification)
-    expect(outcome.kind).toBe('unsupported')
-    expect(outcome.code).toBe('UNSUPPORTED_ENCODING')
-    expect(parseTransaction(notification)).toBeNull()
+    expect(() => parseSwapDetailed(notificationToSwapInput(notification))).toThrow(ValidationError)
+    expect(() => parseSwap(notificationToSwapInput(notification))).toThrow(ValidationError)
   })
 
   test('classifies missing loaded addresses for unresolved lookup indexes', () => {
@@ -116,7 +116,7 @@ describe('parseTransactionDetailed', () => {
       },
     }
 
-    const outcome = parseTransactionDetailed(notification)
+    const outcome = parseSwapDetailed(notificationToSwapInput(notification))
     expect(outcome.kind).toBe('unsupported')
     expect(outcome.code).toBe('MISSING_LOADED_ADDRESSES')
   })
@@ -151,7 +151,7 @@ describe('parseTransactionDetailed', () => {
       },
     } as unknown as TransactionNotification
 
-    const outcome = parseTransactionDetailed(notification)
+    const outcome = parseSwapDetailed(notificationToSwapInput(notification))
     expect(outcome.kind).toBe('unsupported')
     expect(outcome.code).toBe('UNSUPPORTED_TX_VERSION')
   })
@@ -239,7 +239,7 @@ describe('parseTransactionDetailed', () => {
       },
     }
 
-    const outcome = parseTransactionDetailed(notification)
+    const outcome = parseSwapDetailed(notificationToSwapInput(notification))
     expect(outcome.kind).toBe('swap')
     expect(outcome.swap?.routeType).toBe('multi-hop')
     expect(outcome.swap?.warnings).toContain('MULTI_HOP_ROUTE')
@@ -310,8 +310,8 @@ describe('parseTransactionDetailed', () => {
       },
     }
 
-    const outcome = parseTransactionDetailed(notification, {
-      resolveMintTokenProgram: (targetMint) => (targetMint === mint ? 'token-2022' : 'spl-token'),
+    const outcome = parseSwapDetailed(notificationToSwapInput(notification), {
+      resolveMintTokenProgram: (targetMint: string) => (targetMint === mint ? 'token-2022' : 'spl-token'),
     })
 
     expect(outcome.kind).toBe('swap')
@@ -386,7 +386,7 @@ describe('parseTransactionDetailed', () => {
       },
     }
 
-    const outcome = parseTransactionDetailed(notification)
+    const outcome = parseSwapDetailed(notificationToSwapInput(notification))
     expect(outcome.kind).toBe('swap')
     expect(outcome.swap?.outputMint).toBe(tradeMint)
     expect(outcome.swap?.outputMint).not.toBe(rebateMint)

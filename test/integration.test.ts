@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import { SOL_MINT, WSOL_MINT } from '../src/constants.ts'
 import { encodeBase58 } from '../src/idl/codec.ts'
-import { parseTransactionDetailed } from '../src/parser.ts'
+import { parseSwapDetailed } from '../src/parse-swap.ts'
 import type { TokenBalance, TransactionNotification } from '../src/types.ts'
-import { encodeIxData, u64le } from './helpers.ts'
+import { encodeIxData, notificationToSwapInput, u64le } from './helpers.ts'
 
 // ── Discriminators ──
 
@@ -97,7 +97,7 @@ describe('integration: end-to-end per protocol', () => {
       },
     }
 
-    const outcome = parseTransactionDetailed(notification)
+    const outcome = parseSwapDetailed(notificationToSwapInput(notification))
 
     expect(outcome.kind).toBe('swap')
     const swap = outcome.swap!
@@ -167,7 +167,7 @@ describe('integration: end-to-end per protocol', () => {
       },
     }
 
-    const outcome = parseTransactionDetailed(notification)
+    const outcome = parseSwapDetailed(notificationToSwapInput(notification))
 
     expect(outcome.kind).toBe('swap')
     const swap = outcome.swap!
@@ -241,7 +241,7 @@ describe('integration: end-to-end per protocol', () => {
       },
     }
 
-    const outcome = parseTransactionDetailed(notification)
+    const outcome = parseSwapDetailed(notificationToSwapInput(notification))
 
     expect(outcome.kind).toBe('swap')
     const swap = outcome.swap!
@@ -315,7 +315,7 @@ describe('integration: end-to-end per protocol', () => {
       },
     }
 
-    const outcome = parseTransactionDetailed(notification)
+    const outcome = parseSwapDetailed(notificationToSwapInput(notification))
 
     expect(outcome.kind).toBe('swap')
     const swap = outcome.swap!
@@ -396,7 +396,7 @@ describe('integration: end-to-end per protocol', () => {
       },
     }
 
-    const outcome = parseTransactionDetailed(notification)
+    const outcome = parseSwapDetailed(notificationToSwapInput(notification))
 
     expect(outcome.kind).toBe('swap')
     const swap = outcome.swap!
@@ -483,7 +483,7 @@ describe('integration: end-to-end per protocol', () => {
       },
     }
 
-    const outcome = parseTransactionDetailed(notification)
+    const outcome = parseSwapDetailed(notificationToSwapInput(notification))
 
     expect(outcome.kind).toBe('swap')
     const swap = outcome.swap!
@@ -564,7 +564,7 @@ describe('integration: end-to-end per protocol', () => {
       },
     }
 
-    const outcome = parseTransactionDetailed(notification)
+    const outcome = parseSwapDetailed(notificationToSwapInput(notification))
 
     expect(outcome.kind).toBe('swap')
     const swap = outcome.swap!

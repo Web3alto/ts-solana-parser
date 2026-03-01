@@ -8,7 +8,6 @@ import {
   parseSwaps,
   parseSwapsDetailed,
 } from '../src/parse-swap.ts'
-import { parseTransaction, parseTransactionDetailed } from '../src/parser.ts'
 import type { ParserOptions, TokenBalance, TransactionNotification } from '../src/types.ts'
 import { encodeIxData } from './helpers.ts'
 
@@ -87,16 +86,6 @@ function notificationToSwapInput(n: TransactionNotification): SwapInput {
 // ── Tests ──
 
 describe('parseSwap', () => {
-  test('produces same result as parseTransaction', () => {
-    const notification = buildPumpfunBuyNotification()
-    const input = notificationToSwapInput(notification)
-
-    const fromSwap = parseSwap(input)
-    const fromTx = parseTransaction(notification)
-
-    expect(fromSwap).toEqual(fromTx)
-  })
-
   test('works without optional signature and slot fields', () => {
     const notification = buildPumpfunBuyNotification()
     const input: SwapInput = {
@@ -139,16 +128,6 @@ describe('parseSwap', () => {
 })
 
 describe('parseSwapDetailed', () => {
-  test('produces same result as parseTransactionDetailed', () => {
-    const notification = buildPumpfunBuyNotification()
-    const input = notificationToSwapInput(notification)
-
-    const fromSwap = parseSwapDetailed(input)
-    const fromTx = parseTransactionDetailed(notification)
-
-    expect(fromSwap).toEqual(fromTx)
-  })
-
   test('returns ParseOutcome for valid non-swap input', () => {
     const input: SwapInput = {
       transaction: {

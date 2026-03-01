@@ -1,5 +1,5 @@
-import { parseTransaction } from '../src/parser.ts'
-import type { TransactionNotification } from '../src/types.ts'
+import type { SwapInput } from '../src/parse-swap.ts'
+import { parseSwap } from '../src/parse-swap.ts'
 
 const sig = '4FUgVKAde24a7wc75fvGEeyMZbeG374AYBWmHDPH2TiMSYbPP9mGWTXmHsNNiNvQMJGa57kpxyFWeCvyhwmQ94T4'
 const rpcUrl = process.env.RPC_URL!
@@ -20,23 +20,24 @@ async function fetchTx(encoding: string) {
   return json.result
 }
 
-function buildNotification(result: any): TransactionNotification {
+function buildSwapInput(result: any): SwapInput {
   return {
+    transaction: result.transaction,
+    meta: result.meta,
     signature: sig,
     slot: result.slot,
     blockTime: result.blockTime ?? null,
-    transaction: { meta: result.meta, transaction: result.transaction },
   }
 }
 
-function bench(label: string, notification: TransactionNotification, iterations: number) {
+function bench(label: string, input: SwapInput, iterations: number) {
   // Warmup
-  for (let i = 0; i < 100; i++) parseTransaction(notification)
+  for (let i = 0; i < 100; i++) parseSwap(input)
 
   const times: number[] = []
   for (let i = 0; i < iterations; i++) {
     const start = performance.now()
-    parseTransaction(notification)
+    parseSwap(input)
     times.push(performance.now() - start)
   }
 
@@ -68,14 +69,14 @@ const [jsonParsedResult, jsonResult, base64Result] = await Promise.all([
   fetchTx('base64'),
 ])
 
-const jsonParsedNotif = buildNotification(jsonParsedResult)
-const jsonNotif = buildNotification(jsonResult)
-const base64Notif = buildNotification(base64Result)
+const jsonParsedInput = buildSwapInput(jsonParsedResult)
+const jsonInput = buildSwapInput(jsonResult)
+const base64Input = buildSwapInput(base64Result)
 
 // Verify all produce the same swap
-const a = parseTransaction(jsonParsedNotif)
-const b = parseTransaction(jsonNotif)
-const c = parseTransaction(base64Notif)
+const a = parseSwap(jsonParsedInput)
+const b = parseSwap(jsonInput)
+const c = parseSwap(base64Input)
 
 console.log('=== Correctness check ===')
 console.log(`  jsonParsed: swapType=${a?.swapType} pool=${a?.pool?.slice(0, 8)}... input=${a?.inputAmountDecimal}`)
@@ -84,8 +85,8 @@ console.log(`  base64:     swapType=${c?.swapType} pool=${c?.pool?.slice(0, 8)}.
 console.log()
 
 console.log(`=== Benchmark (${ITERATIONS.toLocaleString()} iterations each) ===`)
-bench('jsonParsed (no deserialization)', jsonParsedNotif, ITERATIONS)
+bench('jsonParsed (no deserialization)', jsonParsedInput, ITERATIONS)
 console.log()
-bench('json (compiled instructions, no deserialization)', jsonNotif, ITERATIONS)
+bench('json (compiled instructions, no deserialization)', jsonInput, ITERATIONS)
 console.log()
-bench('base64 (full deserialization + parse)', base64Notif, ITERATIONS)
+bench('base64 (full deserialization + parse)', base64Input, ITERATIONS)
