@@ -36,6 +36,8 @@ export interface TransactionMeta {
       }
     | null
     | undefined
+  logMessages?: string[] | null | undefined
+  computeUnitsConsumed?: number | null | undefined
 }
 
 export interface InnerInstructionSet {
