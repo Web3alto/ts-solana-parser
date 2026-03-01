@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **Orca Whirlpool** protocol support (11th DEX) — all 4 swap variants (`swap`, `swap_v2`, `two_hop_swap`, `two_hop_swap_v2`) with IDL-based discriminator matching and direction resolution
+- **Jupiter aggregator** route detection — 10 route discriminators, `AggregatorInstruction` type, `detectAggregator()` scanner, `routedVia` field on `ParsedSwap` (typed as `Aggregator` union)
+- **Titan aggregator** support (2nd aggregator) — 7 reverse-engineered route variants including `swap_route_v2`
+- **Token metadata resolution** — async resolver for symbol, name, decimals, and URI via Metaplex Token Metadata PDA (Borsh parsing) and Token-2022 metadata extension (TLV parsing), with LRU cache, inflight dedup, and retry
+- `enrichSwapWithMetadata()` for post-processing `ParsedSwap` enrichment
+- `getSupportedAggregators()` introspection function
+- Shared RPC utilities (`rpcCall`, `retryWithBackoff`) extracted into `src/rpc.ts`
+- Exports: `Aggregator` type, `AGGREGATOR_PROGRAM_IDS`, metadata types and classes
+- 34 new tests covering Jupiter (18), Titan, and metadata (16) modules
+
 ## [1.0.0] - 2026-03-01
 
 ### Breaking Changes
@@ -9,22 +23,41 @@ All notable changes to this project are documented in this file.
 - **Removed** deprecated `token2022TransferFeeBps` field from `ParsedSwap`
 - **Removed** `inputToken2022TransferFeeBps` / `outputToken2022TransferFeeBps` placeholder fields from `ParsedSwap`
 - **Removed** `resolveToken2022TransferFeeBps` callback from `ParserOptions`
+- **Removed** unvalidated internal API from public surface — only the `SwapInput`-based API (`parseSwap`, `parseSwapDetailed`, `parseFullSwapTransaction`, `parseSwaps`, `parseSwapsDetailed`) is now exported
 - **Renamed** all `WarningCode` values from kebab-case to SCREAMING_SNAKE_CASE (e.g., `multi-hop-route` → `MULTI_HOP_ROUTE`)
+- **Renamed** project to `ts-solana-parser`
+- **Removed** 5 unused `@solana-program/*` dependencies and `playwright` devDep
 
 ### Added
 
-- `AccountKey` and `InnerInstructionSet` type exports from public API
-- JSDoc documentation on all public functions and key types
+- **Node.js build** via tsup with conditional exports (`bun` → raw TS, `import` → compiled dist) for Vite/Next.js compatibility
+- **Token-2022 extension decoders** — 15 instruction opcodes (22–39): immutable owner, transfer fees, memo transfer, etc.
 - `onInternalError` callback invoked on `parseFullTransaction` failure paths (previously returned `null` silently)
+- `AccountKey` and `InnerInstructionSet` type exports from public API
+- Runtime introspection: `getSupportedProtocols()`, `getSupportedTipProviders()`
+- Exports: `PROGRAM_ID_TO_PROTOCOL`, `TIP_ADDRESS_TO_PROVIDER`, `POOL_ACCOUNT_INDEX`, `lookupTipProvider`, `detectTipsFromRawInstructions`, `normalizeTransactionData`
+- `maxConcurrency` option on ALT resolver (default: 10, chunked `Promise.all`)
+- JSDoc documentation on all public functions and key types
+- MIT `LICENSE` file
+- `package.json` metadata: `license`, `repository`, `homepage`, `bugs`, `keywords`, `author`, `engines`
+- Build and artifact verification step in CI
+
+### Added (Tests)
+
+- 10 sell-side integration tests (one per DEX protocol) matching existing buy-side coverage
+- Edge case tests: failed transaction handling (`META_ERR`), multi-hop `hopCount` assertion
+- Integration tests for Raydium AMM, Meteora DAMM, Meteora DLMM
+- 32 unit tests for `amount`, `normalize`, and `codec` modules
 - Unit tests for balance module (`buildOwnerTokenState`, `computeTokenChanges`, `computeSolChange`, `mergeChanges`, `selectInputOutputChanges`)
 - Unit tests for IDL scoring module (`selectBestIdlCandidate`, `countRouteHops`, `approximatelyEqualBigInt`, `resolveTokenPrograms`)
 - Tests for `parseFullSwapTransaction`
-- MIT `LICENSE` file
-- `package.json` metadata: `license`, `repository`, `homepage`, `bugs`, `keywords`, `author`, `engines`
+- Total: 216 tests, 791 expect() calls
 
 ### Fixed
 
 - Misleading comments in `lib.ts` barrel exports (correctly documents which functions validate with Zod)
+- Bounds checks added to `readString` in system decoder
+- PumpFun test fixture account count (add USER at index 6)
 
 ## [0.9.4] - 2026-03-01
 
