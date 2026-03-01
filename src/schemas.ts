@@ -12,7 +12,7 @@ export const TokenBalanceSchema = z.object({
   }),
 })
 
-export const InnerInstructionSetSchema = z.object({
+const InnerInstructionSetSchema = z.object({
   index: z.number(),
   instructions: z.array(z.unknown()),
 })
@@ -37,7 +37,7 @@ export const TransactionMetaSchema = z.object({
 
 export const EncodedTransactionTupleSchema = z.tuple([z.string(), z.enum(['base58', 'base64', 'base64+zstd'])])
 
-export const TransactionDataSchema = z.object({
+const TransactionDataSchema = z.object({
   message: z.object({}).passthrough(),
   signatures: z.array(z.string()),
 })

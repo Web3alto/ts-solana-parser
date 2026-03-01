@@ -80,7 +80,7 @@ export type Instruction = ParsedInstruction | CompiledInstruction | UnparsedInst
 
 // ── Account key types ──
 
-export interface AccountKeyObject {
+interface AccountKeyObject {
   pubkey: string
   signer: boolean
   writable: boolean

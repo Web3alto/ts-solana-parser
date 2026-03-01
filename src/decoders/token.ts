@@ -1,4 +1,4 @@
-import { encodeBase58 } from '../idl/codec.ts'
+import { encodeBase58, readU64LE } from '../idl/codec.ts'
 import type { TokenInstruction } from '../instruction-types.ts'
 
 const SPL_TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
@@ -9,11 +9,6 @@ const AUTHORITY_TYPES: Record<number, string> = {
   1: 'freezeAccount',
   2: 'accountOwner',
   3: 'closeAccount',
-}
-
-function readU64(data: Uint8Array, offset: number): bigint {
-  const view = new DataView(data.buffer, data.byteOffset, data.byteLength)
-  return view.getBigUint64(offset, true)
 }
 
 function readPubkey(data: Uint8Array, offset: number): string {
@@ -54,7 +49,7 @@ export function decodeTokenInstruction(
     // Transfer
     case 3: {
       if (data.length < 9 || !accounts[0] || !accounts[1] || !accounts[2]) return null
-      const amount = readU64(data, 1)
+      const amount = readU64LE(data, 1)
       return {
         program,
         type: 'transfer',
@@ -68,7 +63,7 @@ export function decodeTokenInstruction(
     // Approve
     case 4: {
       if (data.length < 9 || !accounts[0] || !accounts[1] || !accounts[2]) return null
-      const amount = readU64(data, 1)
+      const amount = readU64LE(data, 1)
       return { program, type: 'approve', source: accounts[0], delegate: accounts[1], authority: accounts[2], amount }
     }
 
@@ -97,14 +92,14 @@ export function decodeTokenInstruction(
     // MintTo
     case 7: {
       if (data.length < 9 || !accounts[0] || !accounts[1] || !accounts[2]) return null
-      const amount = readU64(data, 1)
+      const amount = readU64LE(data, 1)
       return { program, type: 'mintTo', mint: accounts[0], account: accounts[1], authority: accounts[2], amount }
     }
 
     // Burn
     case 8: {
       if (data.length < 9 || !accounts[0] || !accounts[1] || !accounts[2]) return null
-      const amount = readU64(data, 1)
+      const amount = readU64LE(data, 1)
       return { program, type: 'burn', account: accounts[0], mint: accounts[1], authority: accounts[2], amount }
     }
 
@@ -129,7 +124,7 @@ export function decodeTokenInstruction(
     // TransferChecked
     case 12: {
       if (data.length < 10 || !accounts[0] || !accounts[1] || !accounts[2] || !accounts[3]) return null
-      const amount = readU64(data, 1)
+      const amount = readU64LE(data, 1)
       const decimals = data[9]!
       return {
         program,
@@ -146,7 +141,7 @@ export function decodeTokenInstruction(
     // ApproveChecked
     case 13: {
       if (data.length < 10 || !accounts[0] || !accounts[1] || !accounts[2] || !accounts[3]) return null
-      const amount = readU64(data, 1)
+      const amount = readU64LE(data, 1)
       const decimals = data[9]!
       return {
         program,
@@ -163,7 +158,7 @@ export function decodeTokenInstruction(
     // MintToChecked
     case 14: {
       if (data.length < 10 || !accounts[0] || !accounts[1] || !accounts[2]) return null
-      const amount = readU64(data, 1)
+      const amount = readU64LE(data, 1)
       const decimals = data[9]!
       return {
         program,
@@ -179,7 +174,7 @@ export function decodeTokenInstruction(
     // BurnChecked
     case 15: {
       if (data.length < 10 || !accounts[0] || !accounts[1] || !accounts[2]) return null
-      const amount = readU64(data, 1)
+      const amount = readU64LE(data, 1)
       const decimals = data[9]!
       return {
         program,

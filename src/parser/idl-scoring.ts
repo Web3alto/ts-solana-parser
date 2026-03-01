@@ -4,7 +4,7 @@ import type { Instruction, ParserOptions, TokenProgramKind } from '../types.ts'
 import { isCompiledInstruction, isUnparsedInstruction } from './accounts.ts'
 import { normalizeMint, type OwnerTokenState } from './balance.ts'
 
-export interface IdlCandidate {
+interface IdlCandidate {
   programId: string
   swap: RawSwap
 }

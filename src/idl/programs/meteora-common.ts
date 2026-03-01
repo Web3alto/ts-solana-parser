@@ -1,6 +1,7 @@
 import { WSOL_MINT } from '../../constants.ts'
+import type { SwapType } from '../../types.ts'
 import { matchDiscriminator, readU64LE } from '../codec.ts'
-import { type ParseContext, type ProgramParser, type RawSwap, resolveMintForAccount, type SwapType } from '../types.ts'
+import { type ParseContext, type ProgramParser, type RawSwap, resolveMintForAccount } from '../types.ts'
 
 // sha256("global:swap")[0..8]
 const SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const

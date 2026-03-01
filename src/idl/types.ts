@@ -1,10 +1,7 @@
-import type { TokenBalance } from '../types.ts'
-
-export type { SwapType } from '../types.ts'
-export type { TokenBalance }
+import type { SwapType, TokenBalance } from '../types.ts'
 
 export interface RawSwap {
-  type: import('../types.ts').SwapType
+  type: SwapType
   tokenFrom: string
   amountFrom: bigint
   tokenTo: string

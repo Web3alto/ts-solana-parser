@@ -131,7 +131,7 @@ export function mergeChanges(tokenChanges: TokenChange[], solChange: TokenChange
   return [...byMint.values()].filter((c) => c.rawDelta !== 0n)
 }
 
-export interface InputOutputResult {
+interface InputOutputResult {
   input: TokenChange
   output: TokenChange
   warnings: WarningCode[]

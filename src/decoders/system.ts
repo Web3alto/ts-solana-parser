@@ -1,4 +1,4 @@
-import { encodeBase58 } from '../idl/codec.ts'
+import { encodeBase58, readU64LE } from '../idl/codec.ts'
 import type { SystemInstruction } from '../instruction-types.ts'
 import { textDecoder } from './misc.ts'
 
@@ -21,11 +21,6 @@ enum SystemIx {
 
 function readU32LE(data: Uint8Array, offset: number): number {
   return (data[offset]! | (data[offset + 1]! << 8) | (data[offset + 2]! << 16) | (data[offset + 3]! << 24)) >>> 0
-}
-
-function readU64LE(data: Uint8Array, offset: number): bigint {
-  const view = new DataView(data.buffer, data.byteOffset, data.byteLength)
-  return view.getBigUint64(offset, true)
 }
 
 function readAddress(data: Uint8Array, offset: number): string {

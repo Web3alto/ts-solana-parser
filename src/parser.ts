@@ -42,16 +42,7 @@ import type {
   WarningCode,
 } from './types.ts'
 
-// Re-export submodule public API for backwards compatibility
-export {
-  buildFullAccountKeys,
-  getInstructionProgramId,
-  isCompiledInstruction,
-  isUnparsedInstruction,
-  resolveAccountKey,
-} from './parser/accounts.ts'
-export { computeSolChange, computeTokenChanges, mergeChanges } from './parser/balance.ts'
-export { detectProtocols, extractPoolAddress } from './parser/detection.ts'
+// Re-export used by tests
 export { findSwapUser } from './parser/user.ts'
 
 function makeOutcome(
