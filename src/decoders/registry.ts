@@ -1,5 +1,6 @@
 import { AGGREGATOR_PROGRAM_IDS } from '../aggregators/constants.ts'
 import { parseJupiterInstruction } from '../aggregators/jupiter.ts'
+import { parseTitanInstruction } from '../aggregators/titan.ts'
 import { POOL_ACCOUNT_INDEX, PROGRAM_ID_TO_PROTOCOL, SYSTEM_PROGRAM_ID } from '../constants.ts'
 import { decodeBase58 } from '../idl/codec.ts'
 import { tryParseInstruction } from '../idl/registry.ts'
@@ -72,7 +73,7 @@ export function decodeInstruction(
     }
   }
 
-  // 2.5. Check aggregator programs (e.g., Jupiter)
+  // 2.5. Check aggregator programs (e.g., Jupiter, Titan)
   const aggregatorName = AGGREGATOR_PROGRAM_IDS[programId as keyof typeof AGGREGATOR_PROGRAM_IDS]
   if (aggregatorName) {
     let data: Uint8Array
@@ -81,7 +82,8 @@ export function decodeInstruction(
     } catch {
       return makeUnknown(programId, accounts, dataBase58)
     }
-    const parsed = parseJupiterInstruction(data, accounts)
+    const parser = aggregatorName === 'jupiter' ? parseJupiterInstruction : parseTitanInstruction
+    const parsed = parser(data, accounts)
     if (parsed) {
       return {
         program: 'aggregator' as const,
@@ -91,7 +93,7 @@ export function decodeInstruction(
         signer: parsed.signer,
       }
     }
-    // Non-swap Jupiter instructions fall through to unknown
+    // Non-swap aggregator instructions fall through to unknown
   }
 
   // 3. Fallback to unknown

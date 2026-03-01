@@ -1,11 +1,11 @@
 # ts-solana-parser
 
-Solana transaction parser with full instruction decoding, DEX swap detection, aggregator routing, and token metadata resolution. Supports 11 DEX protocols, Jupiter aggregator detection, 12 MEV tip providers, and 6 instruction programs. Built on `@solana/kit`.
+Solana transaction parser with full instruction decoding, DEX swap detection, aggregator routing, and token metadata resolution. Supports 11 DEX protocols, 2 aggregators (Jupiter, Titan), 12 MEV tip providers, and 6 instruction programs. Built on `@solana/kit`.
 
 ## Features
 
 - **Swap detection** across 11 DEX protocols with IDL-based instruction decoding
-- **Aggregator detection** — identifies Jupiter-routed swaps with `routedVia` tagging
+- **Aggregator detection** — identifies Jupiter and Titan routed swaps with `routedVia` tagging
 - **Token metadata** — resolve symbol, name, decimals, and URI via Metaplex or Token-2022 extensions
 - **Full transaction decoding** for System, Token, Token-2022, Compute Budget, ATA, and Memo programs
 - **MEV tip detection** across 12 providers (108 known tip addresses)
@@ -69,20 +69,21 @@ Aggregators like Jupiter wrap DEX swaps as inner instructions (CPIs). The parser
 
 ```ts
 if (swap?.routedVia) {
-  console.log(swap.routedVia) // "jupiter"
+  console.log(swap.routedVia) // "jupiter" | "titan"
 }
 ```
 
 | Aggregator | Program ID |
 |------------|------------|
 | Jupiter | `JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4` |
+| Titan | `T1TANpTeScyeqVzzgNViGDNrkQ6qHz9KrSBS4aNXvGT` |
 
-In full transaction decoding, Jupiter instructions decode with `program: 'aggregator'`:
+In full transaction decoding, aggregator instructions decode with `program: 'aggregator'`:
 
 ```ts
 case 'aggregator':
-  console.log(entry.instruction.aggregator) // "jupiter"
-  console.log(entry.instruction.variant)    // "route" | "shared_accounts_route" | ...
+  console.log(entry.instruction.aggregator) // "jupiter" | "titan"
+  console.log(entry.instruction.variant)    // "route" | "swap_route_v2" | ...
   console.log(entry.instruction.signer)     // swap initiator
 ```
 
