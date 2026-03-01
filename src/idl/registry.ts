@@ -20,6 +20,10 @@ for (const parser of [
   registry.set(parser.programId, parser)
 }
 
+export function hasParser(programId: string): boolean {
+  return registry.has(programId)
+}
+
 export function tryParseInstruction(
   programId: string,
   accounts: string[],

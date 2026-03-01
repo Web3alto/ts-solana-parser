@@ -3,6 +3,7 @@ import { Deque } from './deque.ts'
 import type { StreamMetricEvent, StreamStats } from './metrics.ts'
 import { parseTransactionDetailed } from './parser.ts'
 import type { ParsedSwap, ParseOutcome, ParserOptions, TransactionNotification, WsNotification } from './types.ts'
+import { sleep } from './util.ts'
 
 export interface StreamBackoffOptions {
   minMs: number
@@ -39,7 +40,7 @@ export interface StartStreamOptions {
   backoff?: Partial<StreamBackoffOptions> | undefined
   queue?: Partial<StreamQueueOptions> | undefined
   heartbeat?: Partial<StreamHeartbeatOptions> | undefined
-  encoding?: string | undefined
+  encoding?: 'jsonParsed' | 'base58' | 'base64' | 'base64+zstd' | undefined
   wsUrl?: string | undefined
   maxReconnectAttempts?: number | undefined
 }
@@ -92,10 +93,6 @@ function sanitizeNumber(value: unknown, fallback: number, constraint: NumberCons
 
 function mergeOptions<T extends object>(defaults: T, partial: Partial<T> | undefined): T {
   return { ...defaults, ...(partial ?? {}) }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -237,29 +234,17 @@ export function startStream(
         }
       : arg
 
-  const queueCandidate = mergeOptions(DEFAULT_QUEUE, options.queue)
-  queueCandidate.maxSize = sanitizeNumber(
-    options.queue?.maxSize ?? process.env.STREAM_QUEUE_LIMIT,
-    queueCandidate.maxSize,
-    { min: 10, max: 500_000, integer: true },
-  )
-  queueCandidate.dedupeSize = sanitizeNumber(
-    options.queue?.dedupeSize ?? process.env.STREAM_DEDUPE_SIZE,
-    queueCandidate.dedupeSize,
-    { min: 100, max: 2_000_000, integer: true },
-  )
-  queueCandidate.workerConcurrency = sanitizeNumber(
-    options.queue?.workerConcurrency ?? process.env.STREAM_WORKER_CONCURRENCY,
-    queueCandidate.workerConcurrency,
-    { min: 1, max: 1024, integer: true },
-  )
-  queueCandidate.yieldEveryN = sanitizeNumber(
-    options.queue?.yieldEveryN ?? process.env.STREAM_YIELD_EVERY,
-    queueCandidate.yieldEveryN,
-    { min: 1, max: 100_000, integer: true },
-  )
-
-  const queueConfig = validateQueueConfig(queueCandidate)
+  const queueWithEnv: StreamQueueOptions = {
+    ...DEFAULT_QUEUE,
+    ...options.queue,
+    maxSize: Number(options.queue?.maxSize ?? process.env.STREAM_QUEUE_LIMIT ?? DEFAULT_QUEUE.maxSize),
+    dedupeSize: Number(options.queue?.dedupeSize ?? process.env.STREAM_DEDUPE_SIZE ?? DEFAULT_QUEUE.dedupeSize),
+    workerConcurrency: Number(
+      options.queue?.workerConcurrency ?? process.env.STREAM_WORKER_CONCURRENCY ?? DEFAULT_QUEUE.workerConcurrency,
+    ),
+    yieldEveryN: Number(options.queue?.yieldEveryN ?? process.env.STREAM_YIELD_EVERY ?? DEFAULT_QUEUE.yieldEveryN),
+  }
+  const queueConfig = validateQueueConfig(queueWithEnv)
   const backoff = validateBackoffConfig(mergeOptions(DEFAULT_BACKOFF, options.backoff))
   const heartbeat = validateHeartbeatConfig(mergeOptions(DEFAULT_HEARTBEAT, options.heartbeat))
 
@@ -282,7 +267,7 @@ export function startStream(
 
   const workerPromises = new Set<Promise<void>>()
 
-  const stats: StreamStats = {
+  const stats: Omit<StreamStats, 'queueDepth' | 'inflightWorkers' | 'metricSinkErrors'> = {
     received: 0,
     deduped: 0,
     dropped: 0,
@@ -292,9 +277,6 @@ export function startStream(
     parseError: 0,
     callbackErrors: 0,
     reconnects: 0,
-    queueDepth: 0,
-    inflightWorkers: 0,
-    metricSinkErrors: 0,
   }
 
   function emitMetric(
@@ -308,7 +290,6 @@ export function startStream(
       options.onMetrics({ kind, name, value, tags, ts: Date.now() })
     } catch (error) {
       metricSinkErrors++
-      stats.metricSinkErrors = metricSinkErrors
       if (name !== 'metrics_sink_error') {
         console.error('[stream] metrics sink failed:', error)
       }
@@ -316,13 +297,11 @@ export function startStream(
   }
 
   function updateQueueDepth(): void {
-    stats.queueDepth = queue.size
-    emitMetric('gauge', 'queue_depth', stats.queueDepth)
+    emitMetric('gauge', 'queue_depth', queue.size)
   }
 
   function updateInflightWorkers(): void {
-    stats.inflightWorkers = inflightWorkers
-    emitMetric('gauge', 'inflight_workers', stats.inflightWorkers)
+    emitMetric('gauge', 'inflight_workers', inflightWorkers)
   }
 
   function markSeen(key: string): void {

@@ -81,11 +81,12 @@ export function encodeBase58(bytes: Uint8Array): string {
     }
   }
 
-  let out = '1'.repeat(zeros)
-  for (let i = length - 1; i >= 0; i--) {
-    out += BASE58_ALPHABET[buf[i]!]
+  const chars = new Array<string>(zeros + length)
+  for (let i = 0; i < zeros; i++) chars[i] = '1'
+  for (let i = 0; i < length; i++) {
+    chars[zeros + i] = BASE58_ALPHABET[buf[length - 1 - i]!]!
   }
-  return out
+  return chars.join('')
 }
 
 export function decodeBase64(str: string): Uint8Array {

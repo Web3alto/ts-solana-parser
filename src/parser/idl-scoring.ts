@@ -1,4 +1,4 @@
-import { tryParseInstruction } from '../idl/registry.ts'
+import { hasParser, tryParseInstruction } from '../idl/registry.ts'
 import type { ParseContext, RawSwap } from '../idl/types.ts'
 import type { Instruction, ParserOptions, TokenProgramKind } from '../types.ts'
 import type { NormalizedTransactionMeta } from './accounts.ts'
@@ -31,6 +31,7 @@ export function collectIdlCandidates(
 
   function addCandidate(instr: Instruction): void {
     if (isUnparsedInstruction(instr)) {
+      if (!hasParser(instr.programId)) return
       const swap = tryParseInstruction(instr.programId, instr.accounts, instr.data, ctx)
       if (swap) out.push({ programId: instr.programId, swap })
       return
@@ -39,7 +40,7 @@ export function collectIdlCandidates(
     if (!isCompiledInstruction(instr)) return
 
     const programId = fullKeys[instr.programIdIndex]
-    if (!programId) return
+    if (!programId || !hasParser(programId)) return
 
     const resolvedAccounts: string[] = []
     for (const idx of instr.accounts) {

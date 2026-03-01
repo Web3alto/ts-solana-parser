@@ -39,7 +39,10 @@ export function normalizeMetaWithLookups(
   const readonly = hasLoaded ? loadedReadonly : (resolvedLookups?.readonly ?? [])
 
   return {
-    ...meta,
+    err: meta.err,
+    fee: meta.fee,
+    preBalances: meta.preBalances,
+    postBalances: meta.postBalances,
     preTokenBalances: meta.preTokenBalances ?? [],
     postTokenBalances: meta.postTokenBalances ?? [],
     innerInstructions: meta.innerInstructions ?? [],
