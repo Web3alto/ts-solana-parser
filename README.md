@@ -1,6 +1,6 @@
 # solana-swap-parser
 
-Zero-dependency Solana DEX swap parser for Bun. Pass in a transaction, get back structured swap data. Supports 10 protocols out of the box.
+Solana transaction parser with full instruction decoding and DEX swap detection. Decodes System, Token, Compute Budget, ATA, Memo, and 10 DEX protocol instructions. Built on `@solana/kit`.
 
 ## Install
 
@@ -42,7 +42,44 @@ if (result) {
 | Raydium AMM | `675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8` | `raydium-amm.ts` |
 | Meteora DAMM | `Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB` | `meteora-damm.ts` |
 
-## API Reference
+## Full transaction parsing
+
+Parse every instruction in a transaction — not just swaps:
+
+```ts
+import { parseFullSwapTransaction } from 'solana-swap-parser'
+
+const result = parseFullSwapTransaction({
+  transaction: txData,
+  meta: txMeta,
+  signature: 'sig...',
+  slot: 12345,
+})
+
+if (result) {
+  for (const entry of result.instructions) {
+    const ix = entry.instruction
+    switch (ix.program) {
+      case 'system':       // transferSol, createAccount, assign, ...
+      case 'spl-token':    // transfer, transferChecked, approve, burn, ...
+      case 'token-2022':   // same variants as spl-token
+      case 'compute-budget': // setComputeUnitLimit, setComputeUnitPrice
+      case 'associated-token-account': // create, createIdempotent
+      case 'memo':         // memo message
+      case 'dex':          // DEX swap (10 protocols)
+      case 'unknown':      // unrecognized program
+    }
+  }
+
+  if (result.swap) {
+    console.log(result.swap.swapType) // swap detected within the transaction
+  }
+}
+```
+
+The unvalidated equivalent (`parseFullTransaction`) takes a `TransactionNotification` directly and skips Zod validation.
+
+## Swap API Reference
 
 ### `parseSwap(input, options?)` → `ParsedSwap | null`
 
@@ -150,6 +187,26 @@ const options = createRpcBackedParserOptions({
 ```
 
 ## Output types
+
+### `FullTransactionResult`
+
+```ts
+interface FullTransactionResult {
+  signature: string
+  slot: number
+  blockTime?: number
+  version: 'legacy' | 0
+  fee: number
+  feePayer: string
+  err: Record<string, unknown> | null
+  computeUnitsConsumed?: number
+  logMessages?: string[]
+  instructions: DecodedInstructionEntry[]
+  swap?: ParsedSwap
+}
+```
+
+Each `DecodedInstructionEntry` contains an `index`, the decoded `instruction` (a discriminated union), and decoded `innerInstructions`.
 
 ### `ParsedSwap`
 

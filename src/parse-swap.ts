@@ -1,5 +1,7 @@
 import { ZodError } from 'zod'
 import { ValidationError } from './errors.ts'
+import type { FullTransactionResult } from './instruction-types.ts'
+import { parseFullTransaction } from './parse-transaction-full.ts'
 import { parseTransaction, parseTransactionDetailed } from './parser.ts'
 import { SwapInputSchema } from './schemas.ts'
 import type {
@@ -110,4 +112,9 @@ export async function parseSwapsDetailed(
     }
     return parseTransactionDetailed(v, options)
   })
+}
+
+export function parseFullSwapTransaction(input: SwapInput, options?: ParserOptions): FullTransactionResult | null {
+  const notification = validateAndBuild(input)
+  return parseFullTransaction(notification, options)
 }

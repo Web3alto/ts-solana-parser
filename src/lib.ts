@@ -4,9 +4,24 @@
 export { Protocol, SOL_DECIMALS, SOL_MINT, WSOL_MINT } from './constants.ts'
 // Errors
 export { DecodeError, ParserError, UnsupportedEncodingError, ValidationError } from './errors.ts'
+// Instruction types (full transaction parsing)
+export type {
+  ATAInstruction,
+  ComputeBudgetInstruction,
+  DecodedInstruction,
+  DecodedInstructionEntry,
+  DexSwapInstruction,
+  FullTransactionResult,
+  MemoInstruction,
+  SystemInstruction,
+  TokenInstruction,
+  UnknownInstruction,
+} from './instruction-types.ts'
 export type { SwapInput } from './parse-swap.ts'
 // Validated convenience API (Zod validation at boundary)
-export { parseSwap, parseSwapDetailed, parseSwaps, parseSwapsDetailed } from './parse-swap.ts'
+export { parseFullSwapTransaction, parseSwap, parseSwapDetailed, parseSwaps, parseSwapsDetailed } from './parse-swap.ts'
+// Full transaction parsing (no validation -- use when you trust the input)
+export { parseFullTransaction } from './parse-transaction-full.ts'
 export { parseTransaction, parseTransactionDetailed } from './parser.ts'
 // RPC resolver factory
 export { createRpcBackedParserOptions } from './resolvers.ts'
