@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
+import { WSOL_MINT } from '../src/constants.ts'
 import { encodeBase58 } from '../src/idl/codec.ts'
 import { tryParseInstruction } from '../src/idl/registry.ts'
 import type { ParseContext } from '../src/idl/types.ts'
-import { NATIVE_SOL_MINT } from '../src/idl/types.ts'
 import { encodeIxData, tokenBalance, u64le } from './helpers.ts'
 
 const PUMPFUN_PROGRAM = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P'
@@ -24,7 +24,7 @@ describe('IDL registry', () => {
 
     expect(parsed).not.toBeNull()
     expect(parsed?.type).toBe('pumpfun-buy')
-    expect(parsed?.tokenFrom).toBe(NATIVE_SOL_MINT)
+    expect(parsed?.tokenFrom).toBe(WSOL_MINT)
     expect(parsed?.tokenTo).toBe(mint)
     expect(parsed?.amountFrom).toBe(25_000_000n)
     expect(parsed?.amountTo).toBe(1500n)
@@ -35,14 +35,14 @@ describe('IDL registry', () => {
     const BUY_EXACT_QUOTE_IN_DISC = [198, 46, 21, 82, 180, 217, 232, 112] as const
     const baseMint = 'Base111111111111111111111111111111111111111'
     const signer = 'User111111111111111111111111111111111111111'
-    const accounts = ['a0', signer, 'a2', baseMint, NATIVE_SOL_MINT]
+    const accounts = ['a0', signer, 'a2', baseMint, WSOL_MINT]
     const data = encodeIxData(BUY_EXACT_QUOTE_IN_DISC, 123_000_000n, 9_999n)
 
     const parsed = tryParseInstruction(PUMPSWAP_PROGRAM, accounts, data)
 
     expect(parsed).not.toBeNull()
     expect(parsed?.type).toBe('pumpswap-buy')
-    expect(parsed?.tokenFrom).toBe(NATIVE_SOL_MINT)
+    expect(parsed?.tokenFrom).toBe(WSOL_MINT)
     expect(parsed?.tokenTo).toBe(baseMint)
     expect(parsed?.amountFrom).toBe(123_000_000n)
     expect(parsed?.amountTo).toBe(9_999n)
@@ -55,7 +55,7 @@ describe('IDL registry', () => {
     const outputMint = 'Out1111111111111111111111111111111111111111'
     const accounts = new Array<string>(12).fill('x')
     accounts[0] = signer
-    accounts[10] = NATIVE_SOL_MINT
+    accounts[10] = WSOL_MINT
     accounts[11] = outputMint
     const data = encodeIxData(SWAP_BASE_INPUT_DISC, 2_000_000_000n, 20_000n)
 
@@ -63,7 +63,7 @@ describe('IDL registry', () => {
 
     expect(parsed).not.toBeNull()
     expect(parsed?.type).toBe('raydium-cpmm-buy')
-    expect(parsed?.tokenFrom).toBe(NATIVE_SOL_MINT)
+    expect(parsed?.tokenFrom).toBe(WSOL_MINT)
     expect(parsed?.tokenTo).toBe(outputMint)
     expect(parsed?.amountFrom).toBe(2_000_000_000n)
     expect(parsed?.amountTo).toBe(20_000n)
@@ -74,7 +74,7 @@ describe('IDL registry', () => {
     const SELL_EXACT_OUT_DISC = [95, 200, 71, 34, 8, 9, 11, 166] as const
     const signer = 'User111111111111111111111111111111111111111'
     const baseMint = 'Base111111111111111111111111111111111111111'
-    const quoteMint = NATIVE_SOL_MINT
+    const quoteMint = WSOL_MINT
     const accounts = new Array<string>(11).fill('x')
     accounts[0] = signer
     accounts[9] = baseMint
@@ -99,12 +99,12 @@ describe('IDL registry', () => {
     const accounts = new Array<string>(10).fill('x')
     accounts[3] = 'InputAccount1111111111111111111111111111111'
     accounts[7] = 'TokenA1111111111111111111111111111111111111'
-    accounts[8] = NATIVE_SOL_MINT
+    accounts[8] = WSOL_MINT
     accounts[9] = 'Signer1111111111111111111111111111111111111'
     const data = encodeIxData(SWAP_DISC, 111_000_000n, 22_000n)
     const ctx: ParseContext = {
       allKeys: accounts,
-      preTokenBalances: [tokenBalance(3, NATIVE_SOL_MINT)],
+      preTokenBalances: [tokenBalance(3, WSOL_MINT)],
       postTokenBalances: [],
     }
 
@@ -112,7 +112,7 @@ describe('IDL registry', () => {
 
     expect(parsed).not.toBeNull()
     expect(parsed?.type).toBe('meteora-dbc-buy')
-    expect(parsed?.tokenFrom).toBe(NATIVE_SOL_MINT)
+    expect(parsed?.tokenFrom).toBe(WSOL_MINT)
     expect(parsed?.tokenTo).toBe(accounts[7])
     expect(parsed?.amountFrom).toBe(111_000_000n)
     expect(parsed?.amountTo).toBe(22_000n)
@@ -167,7 +167,7 @@ describe('IDL registry', () => {
 
     expect(parsed).not.toBeNull()
     expect(parsed?.type).toBe('pumpfun-buy')
-    expect(parsed?.tokenFrom).toBe(NATIVE_SOL_MINT)
+    expect(parsed?.tokenFrom).toBe(WSOL_MINT)
     expect(parsed?.amountFrom).toBe(solAmount)
     expect(parsed?.tokenTo).toBe(mint)
     expect(parsed?.amountTo).toBe(minTokenOutput)
@@ -188,7 +188,7 @@ describe('IDL registry', () => {
     expect(parsed).not.toBeNull()
     expect(parsed?.type).toBe('pumpfun-sell')
     expect(parsed?.tokenFrom).toBe(mint)
-    expect(parsed?.tokenTo).toBe(NATIVE_SOL_MINT)
+    expect(parsed?.tokenTo).toBe(WSOL_MINT)
     expect(parsed?.amountFrom).toBe(tokenAmount)
     expect(parsed?.amountTo).toBe(minSolOutput)
     expect(parsed?.signer).toBe(signer)
@@ -198,7 +198,7 @@ describe('IDL registry', () => {
     const BUY_DISC = [102, 6, 61, 18, 1, 218, 235, 234] as const
     const baseMint = 'Base111111111111111111111111111111111111111'
     const signer = 'User111111111111111111111111111111111111111'
-    const accounts = ['a0', signer, 'a2', baseMint, NATIVE_SOL_MINT]
+    const accounts = ['a0', signer, 'a2', baseMint, WSOL_MINT]
     const baseAmountOut = 50_000n
     const maxQuoteAmountIn = 2_000_000_000n
     const data = encodeIxData(BUY_DISC, baseAmountOut, maxQuoteAmountIn)
@@ -207,7 +207,7 @@ describe('IDL registry', () => {
 
     expect(parsed).not.toBeNull()
     expect(parsed?.type).toBe('pumpswap-buy')
-    expect(parsed?.tokenFrom).toBe(NATIVE_SOL_MINT)
+    expect(parsed?.tokenFrom).toBe(WSOL_MINT)
     expect(parsed?.amountFrom).toBe(maxQuoteAmountIn)
     expect(parsed?.tokenTo).toBe(baseMint)
     expect(parsed?.amountTo).toBe(baseAmountOut)
@@ -218,7 +218,7 @@ describe('IDL registry', () => {
     const SELL_DISC = [51, 230, 133, 164, 1, 127, 131, 173] as const
     const baseMint = 'Base111111111111111111111111111111111111111'
     const signer = 'User111111111111111111111111111111111111111'
-    const accounts = ['a0', signer, 'a2', baseMint, NATIVE_SOL_MINT]
+    const accounts = ['a0', signer, 'a2', baseMint, WSOL_MINT]
     const baseAmountIn = 10_000n
     const minQuoteAmountOut = 1_500_000_000n
     const data = encodeIxData(SELL_DISC, baseAmountIn, minQuoteAmountOut)
@@ -228,7 +228,7 @@ describe('IDL registry', () => {
     expect(parsed).not.toBeNull()
     expect(parsed?.type).toBe('pumpswap-sell')
     expect(parsed?.tokenFrom).toBe(baseMint)
-    expect(parsed?.tokenTo).toBe(NATIVE_SOL_MINT)
+    expect(parsed?.tokenTo).toBe(WSOL_MINT)
     expect(parsed?.amountFrom).toBe(baseAmountIn)
     expect(parsed?.amountTo).toBe(minQuoteAmountOut)
     expect(parsed?.signer).toBe(signer)
@@ -238,7 +238,7 @@ describe('IDL registry', () => {
     const BUY_EXACT_IN_DISC = [250, 234, 13, 123, 213, 156, 19, 236] as const
     const signer = 'User111111111111111111111111111111111111111'
     const baseMint = 'Base111111111111111111111111111111111111111'
-    const quoteMint = NATIVE_SOL_MINT
+    const quoteMint = WSOL_MINT
     const accounts = new Array<string>(11).fill('x')
     accounts[0] = signer
     accounts[9] = baseMint
@@ -264,7 +264,7 @@ describe('IDL registry', () => {
     const BUY_EXACT_OUT_DISC = [24, 211, 116, 40, 105, 3, 153, 56] as const
     const signer = 'User111111111111111111111111111111111111111'
     const baseMint = 'Base111111111111111111111111111111111111111'
-    const quoteMint = NATIVE_SOL_MINT
+    const quoteMint = WSOL_MINT
     const accounts = new Array<string>(11).fill('x')
     accounts[0] = signer
     accounts[9] = baseMint
@@ -290,7 +290,7 @@ describe('IDL registry', () => {
     const SELL_EXACT_IN_DISC = [149, 39, 222, 155, 211, 124, 152, 26] as const
     const signer = 'User111111111111111111111111111111111111111'
     const baseMint = 'Base111111111111111111111111111111111111111'
-    const quoteMint = NATIVE_SOL_MINT
+    const quoteMint = WSOL_MINT
     const accounts = new Array<string>(11).fill('x')
     accounts[0] = signer
     accounts[9] = baseMint
@@ -318,7 +318,7 @@ describe('IDL registry', () => {
     const outputMint = 'Out1111111111111111111111111111111111111111'
     const accounts = new Array<string>(12).fill('x')
     accounts[0] = signer
-    accounts[10] = NATIVE_SOL_MINT
+    accounts[10] = WSOL_MINT
     accounts[11] = outputMint
     const maxAmountIn = 4_000_000_000n
     const amountOut = 88_000n
@@ -328,7 +328,7 @@ describe('IDL registry', () => {
 
     expect(parsed).not.toBeNull()
     expect(parsed?.type).toBe('raydium-cpmm-buy')
-    expect(parsed?.tokenFrom).toBe(NATIVE_SOL_MINT)
+    expect(parsed?.tokenFrom).toBe(WSOL_MINT)
     expect(parsed?.tokenTo).toBe(outputMint)
     expect(parsed?.amountFrom).toBe(maxAmountIn)
     expect(parsed?.amountTo).toBe(amountOut)
@@ -338,7 +338,7 @@ describe('IDL registry', () => {
   test('parses Meteora DBC swap2 ExactIn', () => {
     const SWAP2_DISC = [65, 75, 63, 76, 235, 91, 91, 136] as const
     const mintA = 'MintA11111111111111111111111111111111111111'
-    const mintB = NATIVE_SOL_MINT
+    const mintB = WSOL_MINT
     const signer = 'Signer1111111111111111111111111111111111111'
     const accounts = new Array<string>(10).fill('x')
     accounts[3] = 'InputAccount1111111111111111111111111111111'

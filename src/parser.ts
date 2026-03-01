@@ -149,9 +149,10 @@ export function parseTransactionDetailed(notification: TransactionNotification, 
     const solChange = computeSolChange(meta, accountIndexMap, user)
     const merged = mergeChanges(tokenChanges, solChange)
     if (merged.length === 0) return makeOutcome('not_swap', warnings, 'NO_BALANCE_DELTA')
-    const selectedPair = selectInputOutputChanges(merged, selectedIdl, warnings)
+    const selectedPair = selectInputOutputChanges(merged, selectedIdl)
     if (!selectedPair) return makeOutcome('not_swap', warnings, 'NO_INPUT_OUTPUT_PAIR')
     const { input, output } = selectedPair
+    for (const w of selectedPair.warnings) warnings.push(w)
 
     const pool = extractPoolAddress(allInstructions, fullKeys, protocols)
 
@@ -162,23 +163,21 @@ export function parseTransactionDetailed(notification: TransactionNotification, 
 
     let swapType: SwapType | undefined
     if (selectedIdl) {
+      // input.mint and output.mint are already normalized by mergeChanges
       const idlFrom = normalizeMint(selectedIdl.candidate.swap.tokenFrom)
       const idlTo = normalizeMint(selectedIdl.candidate.swap.tokenTo)
+      const flipped = idlFrom === output.mint && idlTo === input.mint
 
-      let expectedInput = selectedIdl.candidate.swap.amountFrom
-      let expectedOutput = selectedIdl.candidate.swap.amountTo
-
-      if (idlFrom === output.mint && idlTo === input.mint) {
-        expectedInput = selectedIdl.candidate.swap.amountTo
-        expectedOutput = selectedIdl.candidate.swap.amountFrom
-      }
-
-      if ((idlFrom === input.mint && idlTo === output.mint) || (idlFrom === output.mint && idlTo === input.mint)) {
+      if (idlFrom === input.mint && idlTo === output.mint) {
+        swapType = selectedIdl.candidate.swap.type
+      } else if (flipped) {
         swapType = selectedIdl.candidate.swap.type
       } else {
         warnings.push('idl-mint-mismatch-with-balance-delta')
       }
 
+      const expectedInput = flipped ? selectedIdl.candidate.swap.amountTo : selectedIdl.candidate.swap.amountFrom
+      const expectedOutput = flipped ? selectedIdl.candidate.swap.amountFrom : selectedIdl.candidate.swap.amountTo
       if (!approximatelyEqualBigInt(expectedInput, inputRaw) || !approximatelyEqualBigInt(expectedOutput, outputRaw)) {
         warnings.push('idl-balance-amount-mismatch')
       }

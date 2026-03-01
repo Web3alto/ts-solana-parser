@@ -1,7 +1,7 @@
 import { SOL_DECIMALS, SOL_MINT, WSOL_MINT } from '../constants.ts'
-import { NATIVE_SOL_MINT } from '../idl/types.ts'
 import type { TokenChange, WarningCode } from '../types.ts'
 import type { NormalizedTransactionMeta } from './accounts.ts'
+import type { IdlSelection } from './idl-scoring.ts'
 
 export interface OwnerTokenState {
   deltasByOwner: Map<string, Map<string, bigint>>
@@ -10,7 +10,7 @@ export interface OwnerTokenState {
 }
 
 export function normalizeMint(mint: string): string {
-  return mint === NATIVE_SOL_MINT ? SOL_MINT : mint
+  return mint === WSOL_MINT ? SOL_MINT : mint
 }
 
 function getOrCreate<K, V>(map: Map<K, V>, key: K, create: () => V): V {
@@ -28,11 +28,7 @@ export function buildOwnerTokenState(meta: NormalizedTransactionMeta): OwnerToke
 
   function parseRawAmount(raw: string): bigint | null {
     if (!/^[0-9]+$/.test(raw)) return null
-    try {
-      return BigInt(raw)
-    } catch {
-      return null
-    }
+    return BigInt(raw)
   }
 
   for (const tb of meta.preTokenBalances) {
@@ -104,7 +100,7 @@ export function mergeChanges(tokenChanges: TokenChange[], solChange: TokenChange
   const byMint = new Map<string, { mint: string; rawDelta: bigint; decimals: number }>()
 
   for (const change of tokenChanges) {
-    const mint = change.mint === WSOL_MINT ? SOL_MINT : change.mint
+    const mint = normalizeMint(change.mint)
     const existing = byMint.get(mint)
     if (existing) {
       existing.rawDelta += change.rawDelta
@@ -133,13 +129,16 @@ export function mergeChanges(tokenChanges: TokenChange[], solChange: TokenChange
   return [...byMint.values()].filter((c) => c.rawDelta !== 0n)
 }
 
+export interface InputOutputResult {
+  input: TokenChange
+  output: TokenChange
+  warnings: WarningCode[]
+}
+
 export function selectInputOutputChanges(
   merged: TokenChange[],
-  selectedIdl: {
-    candidate: { swap: { tokenFrom: string; tokenTo: string } }
-  } | null,
-  warnings: WarningCode[],
-): { input: TokenChange; output: TokenChange } | null {
+  selectedIdl: IdlSelection | null,
+): InputOutputResult | null {
   const inputs = merged.filter((c) => c.rawDelta < 0n)
   const outputs = merged.filter((c) => c.rawDelta > 0n)
   if (inputs.length === 0 || outputs.length === 0) return null
@@ -150,12 +149,15 @@ export function selectInputOutputChanges(
     const anchoredInput = inputs.find((c) => c.mint === idlFrom)
     const anchoredOutput = outputs.find((c) => c.mint === idlTo)
     if (anchoredInput && anchoredOutput) {
-      return { input: anchoredInput, output: anchoredOutput }
+      return { input: anchoredInput, output: anchoredOutput, warnings: [] }
     }
-    warnings.push('idl-mints-not-found-in-primary-deltas')
+    // Fall through to heuristic with warning
+    const input = inputs.reduce((a, b) => (a.rawDelta < b.rawDelta ? a : b))
+    const output = outputs.reduce((a, b) => (a.rawDelta > b.rawDelta ? a : b))
+    return { input, output, warnings: ['idl-mints-not-found-in-primary-deltas'] }
   }
 
   const input = inputs.reduce((a, b) => (a.rawDelta < b.rawDelta ? a : b))
   const output = outputs.reduce((a, b) => (a.rawDelta > b.rawDelta ? a : b))
-  return { input, output }
+  return { input, output, warnings: [] }
 }

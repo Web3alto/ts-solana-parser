@@ -1,10 +1,7 @@
-import { WSOL_MINT } from '../constants.ts'
 import type { TokenBalance } from '../types.ts'
 
 export type { SwapType } from '../types.ts'
 export type { TokenBalance }
-
-export const NATIVE_SOL_MINT = WSOL_MINT
 
 export interface RawSwap {
   type: import('../types.ts').SwapType

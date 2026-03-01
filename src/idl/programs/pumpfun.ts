@@ -1,6 +1,6 @@
+import { WSOL_MINT } from '../../constants.ts'
 import { matchDiscriminator, readU64LE } from '../codec.ts'
 import type { ProgramParser, RawSwap } from '../types.ts'
-import { NATIVE_SOL_MINT } from '../types.ts'
 
 const PROGRAM_ID = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P'
 
@@ -25,7 +25,7 @@ function parseInstruction(data: Uint8Array, accounts: string[]): RawSwap | null 
   if (matchDiscriminator(data, BUY_DISC)) {
     return {
       type: 'pumpfun-buy',
-      tokenFrom: NATIVE_SOL_MINT,
+      tokenFrom: WSOL_MINT,
       amountFrom: readU64LE(data, 16),
       tokenTo: mint,
       amountTo: readU64LE(data, 8),
@@ -37,7 +37,7 @@ function parseInstruction(data: Uint8Array, accounts: string[]): RawSwap | null 
   if (matchDiscriminator(data, BUY_EXACT_SOL_IN_DISC)) {
     return {
       type: 'pumpfun-buy',
-      tokenFrom: NATIVE_SOL_MINT,
+      tokenFrom: WSOL_MINT,
       amountFrom: readU64LE(data, 8),
       tokenTo: mint,
       amountTo: readU64LE(data, 16),
@@ -51,7 +51,7 @@ function parseInstruction(data: Uint8Array, accounts: string[]): RawSwap | null 
       type: 'pumpfun-sell',
       tokenFrom: mint,
       amountFrom: readU64LE(data, 8),
-      tokenTo: NATIVE_SOL_MINT,
+      tokenTo: WSOL_MINT,
       amountTo: readU64LE(data, 16),
       signer,
     }

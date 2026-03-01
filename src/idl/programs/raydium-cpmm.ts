@@ -1,6 +1,6 @@
+import { WSOL_MINT } from '../../constants.ts'
 import { matchDiscriminator, readU64LE } from '../codec.ts'
 import type { ParseContext, ProgramParser, RawSwap } from '../types.ts'
-import { NATIVE_SOL_MINT } from '../types.ts'
 
 const PROGRAM_ID = 'CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C'
 
@@ -15,8 +15,8 @@ const OUTPUT_TOKEN_MINT_INDEX = 11
 
 function resolveDirection(inputMint: string, outputMint: string): 'raydium-cpmm-buy' | 'raydium-cpmm-sell' {
   // buy = paying SOL for token; sell = paying token for SOL
-  if (inputMint === NATIVE_SOL_MINT) return 'raydium-cpmm-buy'
-  if (outputMint === NATIVE_SOL_MINT) return 'raydium-cpmm-sell'
+  if (inputMint === WSOL_MINT) return 'raydium-cpmm-buy'
+  if (outputMint === WSOL_MINT) return 'raydium-cpmm-sell'
   // non-SOL pool: use account ordering heuristic (input = "from" → sell)
   return 'raydium-cpmm-sell'
 }

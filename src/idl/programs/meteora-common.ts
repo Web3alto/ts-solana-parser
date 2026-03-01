@@ -1,6 +1,6 @@
+import { WSOL_MINT } from '../../constants.ts'
 import { matchDiscriminator, readU64LE } from '../codec.ts'
 import type { ParseContext, ProgramParser, RawSwap, SwapType } from '../types.ts'
-import { NATIVE_SOL_MINT } from '../types.ts'
 
 // sha256("global:swap")[0..8]
 const SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const
@@ -56,10 +56,10 @@ function resolveSwapDirection(
   } else if (!inputMint) {
     // Ephemeral input account (not in token balances).
     // If one mint is native SOL, the ephemeral account is WSOL.
-    if (mintB === NATIVE_SOL_MINT) {
+    if (mintB === WSOL_MINT) {
       tokenFrom = mintB
       tokenTo = mintA
-    } else if (mintA === NATIVE_SOL_MINT) {
+    } else if (mintA === WSOL_MINT) {
       tokenFrom = mintA
       tokenTo = mintB
     } else {
@@ -70,7 +70,7 @@ function resolveSwapDirection(
   }
 
   // buy = paying SOL; non-SOL pools: paying mintB for mintA
-  const isBuy = tokenFrom === NATIVE_SOL_MINT || (tokenTo !== NATIVE_SOL_MINT && tokenFrom === mintB)
+  const isBuy = tokenFrom === WSOL_MINT || (tokenTo !== WSOL_MINT && tokenFrom === mintB)
 
   return { tokenFrom, tokenTo, isBuy }
 }

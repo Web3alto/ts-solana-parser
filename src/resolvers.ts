@@ -1,5 +1,6 @@
 import { decodeBase64, encodeBase58 } from './idl/codec.ts'
 import type { AddressLookupResolution, AddressTableLookup, ParserOptions } from './types.ts'
+import { sleep } from './util.ts'
 
 const LOOKUP_TABLE_META_SIZE = 56
 const ADDRESS_LOOKUP_TABLE_PROGRAM = 'AddressLookupTab1e1111111111111111111111111'
@@ -51,10 +52,6 @@ function parseLookupTableAddresses(data: Uint8Array): string[] {
     out.push(encodeBase58(data.subarray(offset, offset + 32)))
   }
   return out
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 class RpcAddressLookupResolver {
