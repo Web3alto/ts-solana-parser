@@ -9,7 +9,7 @@ import {
   parseSwapsDetailed,
 } from '../src/parse-swap.ts'
 import type { ParserOptions, TokenBalance, TransactionNotification } from '../src/types.ts'
-import { encodeIxData } from './helpers.ts'
+import { encodeIxData, notificationToSwapInput } from './helpers.ts'
 
 // ── Fixtures ──
 
@@ -71,16 +71,6 @@ function buildPumpfunBuyNotification(): TransactionNotification {
         signatures: ['TestSig123'],
       },
     },
-  }
-}
-
-function notificationToSwapInput(n: TransactionNotification): SwapInput {
-  return {
-    transaction: n.transaction.transaction,
-    meta: n.transaction.meta,
-    signature: n.signature,
-    slot: n.slot,
-    blockTime: n.blockTime,
   }
 }
 

@@ -23,6 +23,9 @@ const RAYDIUM_CLMM_PROGRAM = 'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK'
 const RAYDIUM_LAUNCHLAB_PROGRAM = 'LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj'
 const METEORA_DBC_PROGRAM = 'dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN'
 const METEORA_DAMMV2_PROGRAM = 'cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG'
+const METEORA_DAMM_PROGRAM = 'Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB'
+const METEORA_DLMM_PROGRAM = 'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'
+const RAYDIUM_AMM_PROGRAM = '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8'
 
 // ── Shared addresses ──
 
@@ -503,7 +506,6 @@ describe('integration: end-to-end per protocol', () => {
     // Account layout (18 accounts for swap):
     //   [1]=amm (pool), [15]=userSourceTokenAccount, [16]=userDestTokenAccount, [17]=userSourceOwner (signer)
     // POOL_ACCOUNT_INDEX = 1
-    const RAYDIUM_AMM_PROGRAM = '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8'
     const amountIn = 60_000_000n // 0.06 SOL
     const minAmountOut = 300_000n
 
@@ -599,12 +601,10 @@ describe('integration: end-to-end per protocol', () => {
     // Account layout: [0]=pool, [1]=userSourceToken, [2]=userDestinationToken, [12]=user (signer)
     // POOL_ACCOUNT_INDEX = 0
     // Anchor discriminator sha256("global:swap")[0..8]
-    const METEORA_DAMM_PROGRAM = 'Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB'
-    const METEORA_DAMM_SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const
     const amountIn = 120_000_000n // 0.12 SOL
     const minAmountOut = 550_000n
 
-    const data = encodeIxData([...METEORA_DAMM_SWAP_DISC], amountIn, minAmountOut)
+    const data = encodeIxData([...METEORA_SWAP_DISC], amountIn, minAmountOut)
 
     const sourceTokenAccount = 'SrcTknAccDAMM11111111111111111111111111111'
     const destTokenAccount = 'DstTknAccDAMM11111111111111111111111111111'
@@ -691,12 +691,10 @@ describe('integration: end-to-end per protocol', () => {
     //                  [6]=token_x_mint, [7]=token_y_mint, [10]=user (signer)
     // POOL_ACCOUNT_INDEX = 0
     // Anchor discriminator sha256("global:swap")[0..8]
-    const METEORA_DLMM_PROGRAM = 'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'
-    const METEORA_DLMM_SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const
     const amountIn = 90_000_000n // 0.09 SOL
     const minAmountOut = 450_000n
 
-    const data = encodeIxData([...METEORA_DLMM_SWAP_DISC], amountIn, minAmountOut)
+    const data = encodeIxData([...METEORA_SWAP_DISC], amountIn, minAmountOut)
 
     const userTokenIn = 'UserTknInDLMM11111111111111111111111111111'
 
