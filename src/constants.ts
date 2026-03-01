@@ -9,6 +9,7 @@ export enum Protocol {
   MeteoraDLMM = 'MeteoraDLMM',
   RaydiumAMM = 'RaydiumAMM',
   MeteoraDAMM = 'MeteoraDAMM',
+  OrcaWhirlpool = 'OrcaWhirlpool',
 }
 
 export const PROGRAM_ID_TO_PROTOCOL = {
@@ -22,6 +23,7 @@ export const PROGRAM_ID_TO_PROTOCOL = {
   LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo: Protocol.MeteoraDLMM,
   '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8': Protocol.RaydiumAMM,
   Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB: Protocol.MeteoraDAMM,
+  whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc: Protocol.OrcaWhirlpool,
 } as const satisfies Record<string, Protocol>
 
 /**
@@ -193,4 +195,5 @@ export const POOL_ACCOUNT_INDEX = {
   [Protocol.MeteoraDLMM]: 0, // lb_pair (idx 4 = userTokenIn, idx 10 = payer)
   [Protocol.RaydiumAMM]: 1, // amm (idx 15 = sourceToken, idx 17 = payer)
   [Protocol.MeteoraDAMM]: 0, // pool (idx 1 = sourceToken, idx 12 = payer)
+  [Protocol.OrcaWhirlpool]: 4, // whirlpool (swap_v2 layout; legacy swap has it at idx 2)
 } as const satisfies Partial<Record<Protocol, number>>

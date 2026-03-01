@@ -1,7 +1,7 @@
 {
   "name": "ts-solana-parser",
   "version": "1.0.0",
-  "description": "Solana transaction parser with full instruction decoding and DEX swap detection for 10 protocols. Built on @solana/kit.",
+  "description": "Solana transaction parser with full instruction decoding and DEX swap detection for 11 protocols. Built on @solana/kit.",
   "module": "./dist/lib.js",
   "types": "./dist/lib.d.ts",
   "type": "module",

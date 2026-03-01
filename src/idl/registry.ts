@@ -3,6 +3,7 @@ import { meteoraDammParser } from './programs/meteora-damm.ts'
 import { meteoraDammv2Parser } from './programs/meteora-dammv2.ts'
 import { meteoraDbcParser } from './programs/meteora-dbc.ts'
 import { meteoraDlmmParser } from './programs/meteora-dlmm.ts'
+import { orcaWhirlpoolParser } from './programs/orca-whirlpool.ts'
 import { pumpfunParser } from './programs/pumpfun.ts'
 import { pumpswapParser } from './programs/pumpswap.ts'
 import { raydiumAmmParser } from './programs/raydium-amm.ts'
@@ -24,6 +25,7 @@ for (const parser of [
   meteoraDlmmParser,
   raydiumAmmParser,
   meteoraDammParser,
+  orcaWhirlpoolParser,
 ]) {
   registry.set(parser.programId, parser)
 }

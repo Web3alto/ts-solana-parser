@@ -146,6 +146,8 @@ export type SwapType =
   | 'raydium-amm-sell'
   | 'meteora-damm-buy'
   | 'meteora-damm-sell'
+  | 'orca-whirlpool-buy'
+  | 'orca-whirlpool-sell'
 
 // ── Parser output ──
 

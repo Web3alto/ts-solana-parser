@@ -1,10 +1,10 @@
 # ts-solana-parser
 
-Solana transaction parser with full instruction decoding, DEX swap detection, and MEV tip identification. Supports 10 DEX protocols, 12 MEV tip providers, and 6 instruction programs. Built on `@solana/kit`.
+Solana transaction parser with full instruction decoding, DEX swap detection, and MEV tip identification. Supports 11 DEX protocols, 12 MEV tip providers, and 6 instruction programs. Built on `@solana/kit`.
 
 ## Features
 
-- **Swap detection** across 10 DEX protocols with IDL-based instruction decoding
+- **Swap detection** across 11 DEX protocols with IDL-based instruction decoding
 - **Full transaction decoding** for System, Token, Token-2022, Compute Budget, ATA, and Memo programs
 - **MEV tip detection** across 12 providers (108 known tip addresses)
 - **Batch processing** with address lookup table pre-warming
@@ -59,6 +59,7 @@ if (swap) {
 | Meteora | DAMMv2 | `cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG` |
 | Meteora | DBC | `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` |
 | Meteora | DLMM | `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo` |
+| Orca | Whirlpool | `whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc` |
 
 ## MEV Tip Detection
 
@@ -151,7 +152,7 @@ if (result) {
       case 'compute-budget': // setComputeUnitLimit, setComputeUnitPrice
       case 'associated-token-account': // create, createIdempotent
       case 'memo':         // memo message
-      case 'dex':          // DEX swap (10 protocols)
+      case 'dex':          // DEX swap (11 protocols)
       case 'unknown':      // unrecognized program
     }
   }
