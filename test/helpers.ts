@@ -1,4 +1,5 @@
 import { encodeBase58 } from '../src/idl/codec.ts'
+import type { ParseContext } from '../src/idl/types.ts'
 import type { TokenBalance } from '../src/types.ts'
 
 export function buildMinimalTxBytes(): Uint8Array {
@@ -49,4 +50,21 @@ export function tokenBalance(accountIndex: number, mint: string, owner?: string)
       uiAmount: 0.000000001,
     },
   }
+}
+
+export function buildTestContext(
+  allKeys: string[],
+  preTokenBalances: TokenBalance[],
+  postTokenBalances: TokenBalance[] = [],
+): ParseContext {
+  const keyIndexMap = new Map<string, number>()
+  for (let i = 0; i < allKeys.length; i++) keyIndexMap.set(allKeys[i]!, i)
+
+  const accountMintMap = new Map<number, string>()
+  for (const b of preTokenBalances) accountMintMap.set(b.accountIndex, b.mint)
+  for (const b of postTokenBalances) {
+    if (!accountMintMap.has(b.accountIndex)) accountMintMap.set(b.accountIndex, b.mint)
+  }
+
+  return { allKeys, preTokenBalances, postTokenBalances, keyIndexMap, accountMintMap }
 }

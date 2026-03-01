@@ -1,5 +1,6 @@
 import { encodeBase58 } from '../idl/codec.ts'
 import type { SystemInstruction } from '../instruction-types.ts'
+import { textDecoder } from './misc.ts'
 
 // System program uses u32 LE instruction index as discriminator (first 4 bytes)
 enum SystemIx {
@@ -35,7 +36,7 @@ function readString(data: Uint8Array, offset: number): { value: string; bytesRea
   const len = readU32LE(data, offset) // u32 LE length prefix
   // Explicitly cast to number since u32 length fits safely
   const end = offset + 4 + len
-  const value = new TextDecoder().decode(data.subarray(offset + 4, end))
+  const value = textDecoder.decode(data.subarray(offset + 4, end))
   return { value, bytesRead: 4 + len }
 }
 

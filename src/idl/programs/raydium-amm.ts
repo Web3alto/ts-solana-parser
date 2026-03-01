@@ -1,6 +1,6 @@
 import { WSOL_MINT } from '../../constants.ts'
 import { readU64LE } from '../codec.ts'
-import type { ParseContext, ProgramParser, RawSwap } from '../types.ts'
+import { type ParseContext, type ProgramParser, type RawSwap, resolveMintForAccount } from '../types.ts'
 
 const PROGRAM_ID = '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8'
 
@@ -17,18 +17,6 @@ const SWAP_BASE_OUT_INDEX = 11
 const SOURCE_TOKEN_ACCOUNT_INDEX = 15
 const DEST_TOKEN_ACCOUNT_INDEX = 16
 const PAYER_INDEX = 17
-
-function resolveMintFromTokenAccount(tokenAccountKey: string, ctx: ParseContext): string | null {
-  const idx = ctx.allKeys.indexOf(tokenAccountKey)
-  if (idx === -1) return null
-  for (const b of ctx.preTokenBalances) {
-    if (b.accountIndex === idx) return b.mint
-  }
-  for (const b of ctx.postTokenBalances) {
-    if (b.accountIndex === idx) return b.mint
-  }
-  return null
-}
 
 function resolveDirection(sourceMint: string, destMint: string): 'raydium-amm-buy' | 'raydium-amm-sell' {
   if (sourceMint === WSOL_MINT) return 'raydium-amm-buy'
@@ -48,8 +36,8 @@ function parseInstruction(data: Uint8Array, accounts: string[], ctx?: ParseConte
   const destAccount = accounts[DEST_TOKEN_ACCOUNT_INDEX]
   if (!signer || !sourceAccount || !destAccount || !ctx) return null
 
-  const sourceMint = resolveMintFromTokenAccount(sourceAccount, ctx)
-  const destMint = resolveMintFromTokenAccount(destAccount, ctx)
+  const sourceMint = resolveMintForAccount(sourceAccount, ctx)
+  const destMint = resolveMintForAccount(destAccount, ctx)
   if (!sourceMint || !destMint) return null
 
   return {

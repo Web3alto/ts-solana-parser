@@ -2,7 +2,7 @@ import type { ATAInstruction, MemoInstruction } from '../instruction-types.ts'
 
 const DEFAULT_TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
 
-const textDecoder = new TextDecoder()
+export const textDecoder = new TextDecoder()
 
 export function decodeATAInstruction(data: Uint8Array, accounts: string[]): ATAInstruction | null {
   const discriminator = data.length === 0 ? 0 : data[0]

@@ -1,6 +1,6 @@
 import { WSOL_MINT } from '../../constants.ts'
 import { matchDiscriminator, readU64LE } from '../codec.ts'
-import type { ParseContext, ProgramParser, RawSwap } from '../types.ts'
+import { type ParseContext, type ProgramParser, type RawSwap, resolveMintForAccount } from '../types.ts'
 
 const PROGRAM_ID = 'Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB'
 
@@ -15,18 +15,6 @@ const SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const
 const SOURCE_TOKEN_INDEX = 1
 const DEST_TOKEN_INDEX = 2
 const PAYER_INDEX = 12
-
-function resolveMintFromTokenAccount(tokenAccountKey: string, ctx: ParseContext): string | null {
-  const idx = ctx.allKeys.indexOf(tokenAccountKey)
-  if (idx === -1) return null
-  for (const b of ctx.preTokenBalances) {
-    if (b.accountIndex === idx) return b.mint
-  }
-  for (const b of ctx.postTokenBalances) {
-    if (b.accountIndex === idx) return b.mint
-  }
-  return null
-}
 
 function resolveDirection(sourceMint: string, destMint: string): 'meteora-damm-buy' | 'meteora-damm-sell' {
   if (sourceMint === WSOL_MINT) return 'meteora-damm-buy'
@@ -43,8 +31,8 @@ function parseInstruction(data: Uint8Array, accounts: string[], ctx?: ParseConte
   const destAccount = accounts[DEST_TOKEN_INDEX]
   if (!signer || !sourceAccount || !destAccount || !ctx) return null
 
-  const sourceMint = resolveMintFromTokenAccount(sourceAccount, ctx)
-  const destMint = resolveMintFromTokenAccount(destAccount, ctx)
+  const sourceMint = resolveMintForAccount(sourceAccount, ctx)
+  const destMint = resolveMintForAccount(destAccount, ctx)
   if (!sourceMint || !destMint) return null
 
   return {

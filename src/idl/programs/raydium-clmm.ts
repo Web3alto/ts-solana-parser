@@ -1,6 +1,6 @@
 import { WSOL_MINT } from '../../constants.ts'
 import { matchDiscriminator, readU64LE } from '../codec.ts'
-import type { ParseContext, ProgramParser, RawSwap } from '../types.ts'
+import { type ParseContext, type ProgramParser, type RawSwap, resolveMintForAccount } from '../types.ts'
 
 const PROGRAM_ID = 'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK'
 
@@ -14,24 +14,6 @@ const PAYER_INDEX = 0
 // swap_v2 has explicit mint accounts
 const SWAP_V2_INPUT_MINT_INDEX = 11
 const SWAP_V2_OUTPUT_MINT_INDEX = 12
-
-/**
- * For the deprecated `swap` instruction, mints aren't in the account list.
- * Resolve them from the input/output token accounts via balance context.
- */
-function resolveMintFromTokenAccount(tokenAccountKey: string, ctx: ParseContext | undefined): string | undefined {
-  if (!ctx) return undefined
-  const keyIndex = ctx.allKeys.indexOf(tokenAccountKey)
-  if (keyIndex === -1) return undefined
-  // Check post then pre balances for the mint
-  for (const bal of ctx.postTokenBalances) {
-    if (bal.accountIndex === keyIndex) return bal.mint
-  }
-  for (const bal of ctx.preTokenBalances) {
-    if (bal.accountIndex === keyIndex) return bal.mint
-  }
-  return undefined
-}
 
 function resolveDirection(inputMint: string, outputMint: string): 'raydium-clmm-buy' | 'raydium-clmm-sell' {
   if (inputMint === WSOL_MINT) return 'raydium-clmm-buy'
@@ -56,8 +38,8 @@ function parseInstruction(data: Uint8Array, accounts: string[], ctx?: ParseConte
     // Deprecated swap: input_token_account at 3, output_token_account at 4
     const inputTokenAccount = accounts[3]
     const outputTokenAccount = accounts[4]
-    if (inputTokenAccount) inputMint = resolveMintFromTokenAccount(inputTokenAccount, ctx)
-    if (outputTokenAccount) outputMint = resolveMintFromTokenAccount(outputTokenAccount, ctx)
+    if (inputTokenAccount && ctx) inputMint = resolveMintForAccount(inputTokenAccount, ctx) ?? undefined
+    if (outputTokenAccount && ctx) outputMint = resolveMintForAccount(outputTokenAccount, ctx) ?? undefined
   } else {
     return null
   }

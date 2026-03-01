@@ -1,6 +1,6 @@
 import { WSOL_MINT } from '../../constants.ts'
 import { matchDiscriminator, readU64LE } from '../codec.ts'
-import type { ParseContext, ProgramParser, RawSwap, SwapType } from '../types.ts'
+import { type ParseContext, type ProgramParser, type RawSwap, resolveMintForAccount, type SwapType } from '../types.ts'
 
 // sha256("global:swap")[0..8]
 const SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const
@@ -21,28 +21,13 @@ interface MeteoraConfig {
   sellType: SwapType
 }
 
-function resolveInputMint(inputAccount: string, ctx?: ParseContext): string | null {
-  if (!ctx) return null
-  const idx = ctx.allKeys.indexOf(inputAccount)
-  if (idx === -1) return null
-
-  for (const b of ctx.preTokenBalances) {
-    if (b.accountIndex === idx) return b.mint
-  }
-  for (const b of ctx.postTokenBalances) {
-    if (b.accountIndex === idx) return b.mint
-  }
-
-  return null
-}
-
 function resolveSwapDirection(
   inputAccount: string,
   mintA: string,
   mintB: string,
   ctx?: ParseContext,
 ): { tokenFrom: string; tokenTo: string; isBuy: boolean } | null {
-  const inputMint = resolveInputMint(inputAccount, ctx)
+  const inputMint = ctx ? resolveMintForAccount(inputAccount, ctx) : null
 
   let tokenFrom: string
   let tokenTo: string

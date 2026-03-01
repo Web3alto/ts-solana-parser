@@ -1,7 +1,6 @@
 import { hasParser, tryParseInstruction } from '../idl/registry.ts'
 import type { ParseContext, RawSwap } from '../idl/types.ts'
 import type { Instruction, ParserOptions, TokenProgramKind } from '../types.ts'
-import type { NormalizedTransactionMeta } from './accounts.ts'
 import { isCompiledInstruction, isUnparsedInstruction } from './accounts.ts'
 import { normalizeMint, type OwnerTokenState } from './balance.ts'
 
@@ -16,17 +15,8 @@ export interface IdlSelection {
   score: number
 }
 
-export function collectIdlCandidates(
-  allInstructions: Instruction[],
-  meta: NormalizedTransactionMeta,
-  fullKeys: string[],
-): IdlCandidate[] {
-  const ctx: ParseContext = {
-    preTokenBalances: meta.preTokenBalances,
-    postTokenBalances: meta.postTokenBalances,
-    allKeys: fullKeys,
-  }
-
+export function collectIdlCandidates(allInstructions: Instruction[], ctx: ParseContext): IdlCandidate[] {
+  const { allKeys } = ctx
   const out: IdlCandidate[] = []
 
   function addCandidate(instr: Instruction): void {
@@ -39,12 +29,12 @@ export function collectIdlCandidates(
 
     if (!isCompiledInstruction(instr)) return
 
-    const programId = fullKeys[instr.programIdIndex]
+    const programId = allKeys[instr.programIdIndex]
     if (!programId || !hasParser(programId)) return
 
     const resolvedAccounts: string[] = []
     for (const idx of instr.accounts) {
-      const key = fullKeys[idx]
+      const key = allKeys[idx]
       if (!key) return
       resolvedAccounts.push(key)
     }

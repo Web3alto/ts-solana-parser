@@ -2,8 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { WSOL_MINT } from '../src/constants.ts'
 import { encodeBase58 } from '../src/idl/codec.ts'
 import { tryParseInstruction } from '../src/idl/registry.ts'
-import type { ParseContext } from '../src/idl/types.ts'
-import { encodeIxData, tokenBalance, u64le } from './helpers.ts'
+import { buildTestContext, encodeIxData, tokenBalance, u64le } from './helpers.ts'
 
 const PUMPFUN_PROGRAM = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P'
 const PUMPSWAP_PROGRAM = 'pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA'
@@ -106,11 +105,7 @@ describe('IDL registry', () => {
     accounts[8] = WSOL_MINT
     accounts[9] = 'Signer1111111111111111111111111111111111111'
     const data = encodeIxData(SWAP_DISC, 111_000_000n, 22_000n)
-    const ctx: ParseContext = {
-      allKeys: accounts,
-      preTokenBalances: [tokenBalance(3, WSOL_MINT)],
-      postTokenBalances: [],
-    }
+    const ctx = buildTestContext(accounts, [tokenBalance(3, WSOL_MINT)])
 
     const parsed = tryParseInstruction(METEORA_DBC_PROGRAM, accounts, data, ctx)
 
@@ -141,11 +136,7 @@ describe('IDL registry', () => {
         1, // ExactOut: amount_0 is exact out, amount_1 is max in
       ]),
     )
-    const ctx: ParseContext = {
-      allKeys: accounts,
-      preTokenBalances: [tokenBalance(2, mintA)],
-      postTokenBalances: [],
-    }
+    const ctx = buildTestContext(accounts, [tokenBalance(2, mintA)])
 
     const parsed = tryParseInstruction(METEORA_DAMMV2_PROGRAM, accounts, data, ctx)
 
@@ -359,11 +350,7 @@ describe('IDL registry', () => {
         0, // ExactIn: amount_0 is exact in, amount_1 is min out
       ]),
     )
-    const ctx: ParseContext = {
-      allKeys: accounts,
-      preTokenBalances: [tokenBalance(3, mintA)],
-      postTokenBalances: [],
-    }
+    const ctx = buildTestContext(accounts, [tokenBalance(3, mintA)])
 
     const parsed = tryParseInstruction(METEORA_DBC_PROGRAM, accounts, data, ctx)
 
@@ -432,11 +419,7 @@ describe('IDL registry', () => {
 
     // allKeys maps accountIndex → key. Token balances use accountIndex to link.
     const allKeys = [signer, 'x', inputTokenAccount, outputTokenAccount]
-    const ctx: ParseContext = {
-      allKeys,
-      preTokenBalances: [tokenBalance(2, WSOL_MINT), tokenBalance(3, tokenMint)],
-      postTokenBalances: [],
-    }
+    const ctx = buildTestContext(allKeys, [tokenBalance(2, WSOL_MINT), tokenBalance(3, tokenMint)])
 
     const parsed = tryParseInstruction(RAYDIUM_CLMM_PROGRAM, accounts, data, ctx)
 
@@ -459,11 +442,7 @@ describe('IDL registry', () => {
     accounts[7] = WSOL_MINT
     accounts[10] = signer
     const data = encodeIxData(SWAP_DISC, 500_000_000n, 100_000n)
-    const ctx: ParseContext = {
-      allKeys: accounts,
-      preTokenBalances: [tokenBalance(4, WSOL_MINT)],
-      postTokenBalances: [],
-    }
+    const ctx = buildTestContext(accounts, [tokenBalance(4, WSOL_MINT)])
 
     const parsed = tryParseInstruction(METEORA_DLMM_PROGRAM, accounts, data, ctx)
 
@@ -486,11 +465,7 @@ describe('IDL registry', () => {
     accounts[7] = WSOL_MINT
     accounts[10] = signer
     const data = encodeIxData(SWAP_DISC, 75_000n, 2_000_000_000n)
-    const ctx: ParseContext = {
-      allKeys: accounts,
-      preTokenBalances: [tokenBalance(4, mintX)],
-      postTokenBalances: [],
-    }
+    const ctx = buildTestContext(accounts, [tokenBalance(4, mintX)])
 
     const parsed = tryParseInstruction(METEORA_DLMM_PROGRAM, accounts, data, ctx)
 
@@ -513,11 +488,7 @@ describe('IDL registry', () => {
     accounts[7] = WSOL_MINT
     accounts[10] = signer
     const data = encodeIxData(SWAP_EXACT_OUT_DISC, 3_000_000_000n, 50_000n)
-    const ctx: ParseContext = {
-      allKeys: accounts,
-      preTokenBalances: [tokenBalance(4, WSOL_MINT)],
-      postTokenBalances: [],
-    }
+    const ctx = buildTestContext(accounts, [tokenBalance(4, WSOL_MINT)])
 
     const parsed = tryParseInstruction(METEORA_DLMM_PROGRAM, accounts, data, ctx)
 
@@ -541,11 +512,7 @@ describe('IDL registry', () => {
     accounts[10] = signer
     // [8 disc][8 amount_in][1 option tag (None)][2 max_price_impact_bps]
     const data = encodeBase58(Uint8Array.from([...SWAP_WITH_PRICE_IMPACT_DISC, ...u64le(1_000_000_000n), 0, 0, 50]))
-    const ctx: ParseContext = {
-      allKeys: accounts,
-      preTokenBalances: [tokenBalance(4, WSOL_MINT)],
-      postTokenBalances: [],
-    }
+    const ctx = buildTestContext(accounts, [tokenBalance(4, WSOL_MINT)])
 
     const parsed = tryParseInstruction(METEORA_DLMM_PROGRAM, accounts, data, ctx)
 
@@ -569,11 +536,7 @@ describe('IDL registry', () => {
     accounts[10] = signer
     const data = encodeIxData(SWAP2_DISC, 2_000_000_000n, 88_000n)
     // No balance entry for ephemeral account — fallback to WSOL detection
-    const ctx: ParseContext = {
-      allKeys: accounts,
-      preTokenBalances: [],
-      postTokenBalances: [],
-    }
+    const ctx = buildTestContext(accounts, [])
 
     const parsed = tryParseInstruction(METEORA_DLMM_PROGRAM, accounts, data, ctx)
 
@@ -598,11 +561,7 @@ describe('IDL registry', () => {
     // Data: [1 byte index=9][8 amountIn][8 minAmountOut]
     const data = encodeBase58(Uint8Array.from([9, ...u64le(1_000_000_000n), ...u64le(50_000n)]))
     const allKeys = [...accounts.slice(0, 15), sourceAccount, destAccount, signer]
-    const ctx: ParseContext = {
-      allKeys,
-      preTokenBalances: [tokenBalance(15, WSOL_MINT), tokenBalance(16, tokenMint)],
-      postTokenBalances: [],
-    }
+    const ctx = buildTestContext(allKeys, [tokenBalance(15, WSOL_MINT), tokenBalance(16, tokenMint)])
 
     const parsed = tryParseInstruction(RAYDIUM_AMM_PROGRAM, accounts, data, ctx)
 
@@ -627,11 +586,7 @@ describe('IDL registry', () => {
     // Data: [1 byte index=11][8 maxAmountIn][8 amountOut]
     const data = encodeBase58(Uint8Array.from([11, ...u64le(75_000n), ...u64le(2_000_000_000n)]))
     const allKeys = [...accounts.slice(0, 15), sourceAccount, destAccount, signer]
-    const ctx: ParseContext = {
-      allKeys,
-      preTokenBalances: [tokenBalance(15, tokenMint), tokenBalance(16, WSOL_MINT)],
-      postTokenBalances: [],
-    }
+    const ctx = buildTestContext(allKeys, [tokenBalance(15, tokenMint), tokenBalance(16, WSOL_MINT)])
 
     const parsed = tryParseInstruction(RAYDIUM_AMM_PROGRAM, accounts, data, ctx)
 
@@ -656,11 +611,7 @@ describe('IDL registry', () => {
     accounts[12] = signer
     const data = encodeIxData(SWAP_DISC, 500_000_000n, 100_000n)
     const allKeys = ['pool', sourceAccount, destAccount, ...new Array<string>(9).fill('x'), signer]
-    const ctx: ParseContext = {
-      allKeys,
-      preTokenBalances: [tokenBalance(1, WSOL_MINT), tokenBalance(2, tokenMint)],
-      postTokenBalances: [],
-    }
+    const ctx = buildTestContext(allKeys, [tokenBalance(1, WSOL_MINT), tokenBalance(2, tokenMint)])
 
     const parsed = tryParseInstruction(METEORA_DAMM_PROGRAM, accounts, data, ctx)
 
@@ -685,11 +636,7 @@ describe('IDL registry', () => {
     accounts[12] = signer
     const data = encodeIxData(SWAP_DISC, 80_000n, 3_000_000_000n)
     const allKeys = ['pool', sourceAccount, destAccount, ...new Array<string>(9).fill('x'), signer]
-    const ctx: ParseContext = {
-      allKeys,
-      preTokenBalances: [tokenBalance(1, tokenMint), tokenBalance(2, WSOL_MINT)],
-      postTokenBalances: [],
-    }
+    const ctx = buildTestContext(allKeys, [tokenBalance(1, tokenMint), tokenBalance(2, WSOL_MINT)])
 
     const parsed = tryParseInstruction(METEORA_DAMM_PROGRAM, accounts, data, ctx)
 

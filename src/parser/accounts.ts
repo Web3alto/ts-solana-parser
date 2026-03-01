@@ -1,3 +1,4 @@
+import type { ParseContext } from '../idl/types.ts'
 import type {
   AccountKey,
   AddressLookupResolution,
@@ -108,6 +109,25 @@ export function getInstructionProgramId(instr: Instruction, fullKeys: string[]):
     return fullKeys[instr.programIdIndex]
   }
   return instr.programId
+}
+
+export function buildParseContext(meta: NormalizedTransactionMeta, fullKeys: string[]): ParseContext {
+  const keyIndexMap = new Map<string, number>()
+  for (let i = 0; i < fullKeys.length; i++) keyIndexMap.set(fullKeys[i]!, i)
+
+  const accountMintMap = new Map<number, string>()
+  for (const b of meta.preTokenBalances) accountMintMap.set(b.accountIndex, b.mint)
+  for (const b of meta.postTokenBalances) {
+    if (!accountMintMap.has(b.accountIndex)) accountMintMap.set(b.accountIndex, b.mint)
+  }
+
+  return {
+    preTokenBalances: meta.preTokenBalances,
+    postTokenBalances: meta.postTokenBalances,
+    allKeys: fullKeys,
+    keyIndexMap,
+    accountMintMap,
+  }
 }
 
 export function getAllInstructions(message: TransactionMessage, meta: NormalizedTransactionMeta): Instruction[] {

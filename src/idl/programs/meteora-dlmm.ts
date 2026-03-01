@@ -1,6 +1,6 @@
 import { WSOL_MINT } from '../../constants.ts'
 import { matchDiscriminator, readU64LE } from '../codec.ts'
-import type { ParseContext, ProgramParser, RawSwap } from '../types.ts'
+import { type ParseContext, type ProgramParser, type RawSwap, resolveMintForAccount } from '../types.ts'
 
 const PROGRAM_ID = 'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'
 
@@ -29,28 +29,13 @@ const MINT_X_INDEX = 6
 const MINT_Y_INDEX = 7
 const PAYER_INDEX = 10
 
-function resolveInputMint(inputAccount: string, ctx?: ParseContext): string | null {
-  if (!ctx) return null
-  const idx = ctx.allKeys.indexOf(inputAccount)
-  if (idx === -1) return null
-
-  for (const b of ctx.preTokenBalances) {
-    if (b.accountIndex === idx) return b.mint
-  }
-  for (const b of ctx.postTokenBalances) {
-    if (b.accountIndex === idx) return b.mint
-  }
-
-  return null
-}
-
 function resolveDirection(
   inputAccount: string,
   mintX: string,
   mintY: string,
   ctx?: ParseContext,
 ): { tokenFrom: string; tokenTo: string; isBuy: boolean } | null {
-  const inputMint = resolveInputMint(inputAccount, ctx)
+  const inputMint = ctx ? resolveMintForAccount(inputAccount, ctx) : null
 
   let tokenFrom: string
   let tokenTo: string

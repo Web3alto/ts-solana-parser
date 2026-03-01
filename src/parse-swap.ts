@@ -1,9 +1,7 @@
-import { ZodError } from 'zod'
-import { ValidationError } from './errors.ts'
 import type { FullTransactionResult } from './instruction-types.ts'
 import { parseFullTransaction } from './parse-transaction-full.ts'
-import { parseTransaction, parseTransactionDetailed } from './parser.ts'
-import { SwapInputSchema } from './schemas.ts'
+import { parseTransactionDetailed } from './parser.ts'
+import { SwapInputSchema, validateWithZod } from './schemas.ts'
 import type {
   EncodedTransactionTuple,
   ParsedSwap,
@@ -23,14 +21,7 @@ export interface SwapInput {
 }
 
 function validateAndBuild(input: SwapInput): TransactionNotification {
-  try {
-    SwapInputSchema.parse(input)
-  } catch (err) {
-    if (err instanceof ZodError) {
-      throw new ValidationError(err.issues)
-    }
-    throw err
-  }
+  validateWithZod(SwapInputSchema, input)
 
   return {
     signature: input.signature ?? '',
@@ -48,7 +39,6 @@ function tryValidateAndBuild(input: SwapInput): TransactionNotification | string
   try {
     return validateAndBuild(input)
   } catch (err) {
-    if (err instanceof ValidationError) return err.message
     if (err instanceof Error) return err.message
     return 'Unknown validation error'
   }
@@ -56,12 +46,13 @@ function tryValidateAndBuild(input: SwapInput): TransactionNotification | string
 
 export function parseSwap(input: SwapInput, options?: ParserOptions): ParsedSwap | null {
   const notification = validateAndBuild(input)
-  return parseTransaction(notification, options)
+  const outcome = parseTransactionDetailed(notification, options, undefined, true)
+  return outcome.swap ?? null
 }
 
 export function parseSwapDetailed(input: SwapInput, options?: ParserOptions): ParseOutcome {
   const notification = validateAndBuild(input)
-  return parseTransactionDetailed(notification, options)
+  return parseTransactionDetailed(notification, options, undefined, true)
 }
 
 export async function parseSwaps(
@@ -105,16 +96,16 @@ export async function parseSwapsDetailed(
     }
   }
 
-  // 4. Parse each item
+  // 4. Parse each item (skip validation since we already validated above)
   return validated.map((v) => {
     if (typeof v === 'string') {
       return { kind: 'error' as const, code: 'INTERNAL_ERROR' as const, warnings: [], errorMessage: v }
     }
-    return parseTransactionDetailed(v, options)
+    return parseTransactionDetailed(v, options, undefined, true)
   })
 }
 
 export function parseFullSwapTransaction(input: SwapInput, options?: ParserOptions): FullTransactionResult | null {
   const notification = validateAndBuild(input)
-  return parseFullTransaction(notification, options)
+  return parseFullTransaction(notification, options, true)
 }
