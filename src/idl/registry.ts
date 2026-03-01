@@ -3,6 +3,7 @@ import { meteoraDammv2Parser } from './programs/meteora-dammv2.ts'
 import { meteoraDbcParser } from './programs/meteora-dbc.ts'
 import { pumpfunParser } from './programs/pumpfun.ts'
 import { pumpswapParser } from './programs/pumpswap.ts'
+import { raydiumClmmParser } from './programs/raydium-clmm.ts'
 import { raydiumCpmmParser } from './programs/raydium-cpmm.ts'
 import { raydiumLaunchLabParser } from './programs/raydium-launchlab.ts'
 import type { ParseContext, ProgramParser, RawSwap } from './types.ts'
@@ -13,6 +14,7 @@ for (const parser of [
   pumpfunParser,
   pumpswapParser,
   raydiumCpmmParser,
+  raydiumClmmParser,
   raydiumLaunchLabParser,
   meteoraDbcParser,
   meteoraDammv2Parser,

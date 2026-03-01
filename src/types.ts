@@ -137,6 +137,8 @@ export type SwapType =
   | 'raydium-launchlab-sell'
   | 'raydium-cpmm-buy'
   | 'raydium-cpmm-sell'
+  | 'raydium-clmm-buy'
+  | 'raydium-clmm-sell'
   | 'meteora-dbc-buy'
   | 'meteora-dbc-sell'
   | 'meteora-dammv2-buy'

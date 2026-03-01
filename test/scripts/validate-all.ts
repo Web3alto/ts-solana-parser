@@ -18,6 +18,7 @@ const TOKEN_ADDRESSES: Record<Protocol, string> = {
   [Protocol.PumpFun]: '2UcQk67vPDUp5VtTpjnbE12nhwvrFkV62Z2Qq5Wtpump',
   [Protocol.PumpSwap]: 'DCEGmjMVGNB5yDfuieVan9nQdLVog1im1vD2SfvkLhJG',
   [Protocol.RaydiumCPMM]: '8opvqaWysX1oYbXuTL8PHaoaTiXD69VFYAX4smPebonk',
+  [Protocol.RaydiumCLMM]: 'So11111111111111111111111111111111111111112',
   [Protocol.RaydiumLaunchLab]: '288am5VTRa5HUrQdJksHMLxWzFVXxwBU4mDCbvDQFWTF',
   [Protocol.MeteoraDBC]: 'BdGuUUxfp74PnyEYAFnEBFrsHVdDh5PTRHgqqbHKmoon',
   [Protocol.MeteoraDAMMv2]: 'BANKJmvhT8tiJRsBSS1n2HryMBPvT5Ze4HU95DUAmeta',

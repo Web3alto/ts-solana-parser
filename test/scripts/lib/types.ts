@@ -41,6 +41,7 @@ export const PROTOCOL_DIRS: Record<Protocol, string> = {
   [Protocol.PumpFun]: 'pumpfun',
   [Protocol.PumpSwap]: 'pumpswap',
   [Protocol.RaydiumCPMM]: 'raydium-cpmm',
+  [Protocol.RaydiumCLMM]: 'raydium-clmm',
   [Protocol.RaydiumLaunchLab]: 'raydium-launchlab',
   [Protocol.MeteoraDBC]: 'meteora-dbc',
   [Protocol.MeteoraDAMMv2]: 'meteora-dammv2',

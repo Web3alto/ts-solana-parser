@@ -3,6 +3,7 @@ export enum Protocol {
   PumpSwap = 'PumpSwap',
   RaydiumLaunchLab = 'RaydiumLaunchLab',
   RaydiumCPMM = 'RaydiumCPMM',
+  RaydiumCLMM = 'RaydiumCLMM',
   MeteoraDBC = 'MeteoraDBC',
   MeteoraDAMMv2 = 'MeteoraDAMMv2',
 }
@@ -12,6 +13,7 @@ export const PROGRAM_ID_TO_PROTOCOL = {
   pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA: Protocol.PumpSwap,
   LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj: Protocol.RaydiumLaunchLab,
   CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C: Protocol.RaydiumCPMM,
+  CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK: Protocol.RaydiumCLMM,
   dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN: Protocol.MeteoraDBC,
   cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG: Protocol.MeteoraDAMMv2,
 } as const satisfies Record<string, Protocol>
@@ -37,6 +39,7 @@ export const POOL_ACCOUNT_INDEX = {
   [Protocol.PumpFun]: 3, // bondingCurve (idx 2 = mint)
   [Protocol.PumpSwap]: 0, // pool (idx 1 = user, idx 3/4 = mints)
   [Protocol.RaydiumCPMM]: 3, // poolState (idx 0 = payer, idx 1 = authority)
+  [Protocol.RaydiumCLMM]: 2, // poolState (idx 0 = payer, idx 1 = ammConfig)
   [Protocol.RaydiumLaunchLab]: 2, // poolState (idx 0 = payer, idx 1 = authority)
   [Protocol.MeteoraDBC]: 0, // pool (idx 3 = inputToken, idx 9 = payer)
   [Protocol.MeteoraDAMMv2]: 0, // pool (idx 2 = inputToken, idx 8 = payer)
