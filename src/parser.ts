@@ -1,10 +1,11 @@
 import { formatTokenAmountDecimal, toApproxTokenAmountNumber } from './amount.ts'
 import { DecodeError, UnsupportedEncodingError } from './errors.ts'
+import type { ParseContext } from './idl/types.ts'
 import { normalizeTransactionData } from './normalize.ts'
 import type { NormalizedTransactionMeta } from './parser/accounts.ts'
 import {
-  buildAccountIndexMap,
   buildFullAccountKeys,
+  buildParseContext,
   getAllInstructions,
   hasUnresolvedAddressLookupIndexes,
   normalizeMetaWithLookups,
@@ -26,8 +27,10 @@ import {
   selectBestIdlCandidate,
 } from './parser/idl-scoring.ts'
 import { buildSignerSet, findSwapUser } from './parser/user.ts'
+import { TransactionNotificationSchema, validateWithZod } from './schemas.ts'
 import { detectTipsFromRawInstructions } from './tips.ts'
 import type {
+  Instruction,
   MevTip,
   ParseCode,
   ParsedSwap,
@@ -71,17 +74,31 @@ export function parseTransactionDetailed(
   notification: TransactionNotification,
   options?: ParserOptions,
   /** @internal Pre-computed normalization to skip redundant work (used by parseFullTransaction) */
-  _prepared?: { message: TransactionMessage; meta: NormalizedTransactionMeta; fullKeys: string[]; tips?: readonly MevTip[] | undefined },
+  _prepared?: {
+    message: TransactionMessage
+    meta: NormalizedTransactionMeta
+    fullKeys: string[]
+    ctx?: ParseContext
+    tips?: readonly MevTip[] | undefined
+  },
+  /** @internal Skip Zod validation (caller already validated) */
+  _skipValidation?: boolean,
 ): ParseOutcome {
   const warnings: WarningCode[] = []
 
   let message: TransactionMessage
   let meta: NormalizedTransactionMeta
   let fullKeys: string[]
+  let allInstructions: Instruction[] | undefined
+  let ctx: ParseContext | undefined = _prepared?.ctx
 
   if (_prepared) {
     ;({ message, meta, fullKeys } = _prepared)
   } else {
+    if (!_skipValidation) {
+      validateWithZod(TransactionNotificationSchema, notification)
+    }
+
     try {
       ;({ message } = normalizeTransactionData(notification.transaction.transaction))
     } catch (err) {
@@ -110,8 +127,8 @@ export function parseTransactionDetailed(
 
       if (meta.err !== null) return makeOutcome('not_swap', warnings, 'META_ERR')
 
-      const preCheckInstructions = getAllInstructions(message, meta)
-      if (hasUnresolvedAddressLookupIndexes(message, meta, preCheckInstructions)) {
+      allInstructions = getAllInstructions(message, meta)
+      if (hasUnresolvedAddressLookupIndexes(message, meta, allInstructions)) {
         return makeOutcome(
           'unsupported',
           warnings,
@@ -136,8 +153,8 @@ export function parseTransactionDetailed(
     if (!feePayer) return makeOutcome('error', warnings, 'INTERNAL_ERROR', 'Missing fee payer')
 
     const { signature, slot, blockTime } = notification
-    const allInstructions = getAllInstructions(message, meta)
-    const accountIndexMap = buildAccountIndexMap(fullKeys)
+    if (!allInstructions) allInstructions = getAllInstructions(message, meta)
+    if (!ctx) ctx = buildParseContext(meta, fullKeys)
     const protocols = detectProtocols(allInstructions, fullKeys)
     if (protocols.length === 0) return makeOutcome('not_swap', warnings, 'NO_SWAP_SIGNAL')
 
@@ -145,7 +162,7 @@ export function parseTransactionDetailed(
     if (state.malformedBalanceEntries > 0) {
       warnings.push('malformed-balance-entries-skipped')
     }
-    const idlCandidates = collectIdlCandidates(allInstructions, meta, fullKeys)
+    const idlCandidates = collectIdlCandidates(allInstructions, ctx)
     let hopCount = countRouteHops(idlCandidates)
     if (hopCount === 1 && protocols.length > 1) {
       hopCount = protocols.length
@@ -164,13 +181,13 @@ export function parseTransactionDetailed(
     }
 
     const signerSet = buildSignerSet(message, feePayer)
-    const user = selectedIdl?.candidate.swap.signer ?? findSwapUser(state, accountIndexMap, meta, feePayer, signerSet)
+    const user = selectedIdl?.candidate.swap.signer ?? findSwapUser(state, ctx.keyIndexMap, meta, feePayer, signerSet)
     if (!user) {
       return makeOutcome('not_swap', warnings, 'NO_USER_CANDIDATE')
     }
 
     const tokenChanges = computeTokenChanges(state, user)
-    const solChange = computeSolChange(meta, accountIndexMap, user)
+    const solChange = computeSolChange(meta, ctx.keyIndexMap, user)
     const merged = mergeChanges(tokenChanges, solChange)
     if (merged.length === 0) return makeOutcome('not_swap', warnings, 'NO_BALANCE_DELTA')
     const selectedPair = selectInputOutputChanges(merged, selectedIdl)
@@ -273,10 +290,11 @@ export function _parseTransactionWithPrepared(
   message: TransactionMessage,
   meta: NormalizedTransactionMeta,
   fullKeys: string[],
+  ctx: ParseContext,
   notification: TransactionNotification,
   options?: ParserOptions,
   tips?: readonly MevTip[] | undefined,
 ): ParsedSwap | null {
-  const outcome = parseTransactionDetailed(notification, options, { message, meta, fullKeys, tips })
+  const outcome = parseTransactionDetailed(notification, options, { message, meta, fullKeys, ctx, tips })
   return outcome.swap ?? null
 }

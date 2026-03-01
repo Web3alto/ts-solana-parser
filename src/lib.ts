@@ -32,6 +32,8 @@ export {
   SwapInputSchema,
   TokenBalanceSchema,
   TransactionMetaSchema,
+  TransactionNotificationSchema,
+  TransactionResultSchema,
 } from './schemas.ts'
 // Types
 export type {

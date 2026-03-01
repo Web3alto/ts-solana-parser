@@ -4,25 +4,29 @@ import type { DecodedInstruction, DecodedInstructionEntry, FullTransactionResult
 import { normalizeTransactionData } from './normalize.ts'
 import {
   buildFullAccountKeys,
+  buildParseContext,
   getInstructionProgramId,
   isCompiledInstruction,
   isUnparsedInstruction,
   normalizeMetaWithLookups,
 } from './parser/accounts.ts'
 import { _parseTransactionWithPrepared } from './parser.ts'
+import { TransactionNotificationSchema, validateWithZod } from './schemas.ts'
 import { detectTips } from './tips.ts'
-import type {
-  CompiledInstruction,
-  Instruction,
-  ParserOptions,
-  TransactionNotification,
-} from './types.ts'
+import type { CompiledInstruction, Instruction, ParserOptions, TransactionNotification } from './types.ts'
 
 export function parseFullTransaction(
   notification: TransactionNotification,
   options?: ParserOptions,
+  /** @internal Skip Zod validation (caller already validated) */
+  _skipValidation?: boolean,
 ): FullTransactionResult | null {
-  // 1. Normalize transaction data
+  // 1. Validate input
+  if (!_skipValidation) {
+    validateWithZod(TransactionNotificationSchema, notification)
+  }
+
+  // 2. Normalize transaction data
   let message: import('./types.ts').TransactionMessage
   try {
     ;({ message } = normalizeTransactionData(notification.transaction.transaction))
@@ -30,7 +34,7 @@ export function parseFullTransaction(
     return null
   }
 
-  // 2. Resolve lookups and build full account keys
+  // 3. Resolve lookups and build full account keys
   const resolvedLookups =
     message.addressTableLookups?.length && options?.resolveAddressTableLookups
       ? options.resolveAddressTableLookups(message.addressTableLookups)
@@ -44,21 +48,23 @@ export function parseFullTransaction(
   // Detect version from message
   const version = message.addressTableLookups?.length ? (0 as const) : ('legacy' as const)
 
-  // Build parse context for DEX decoders
-  const ctx: ParseContext = {
-    preTokenBalances: meta.preTokenBalances,
-    postTokenBalances: meta.postTokenBalances,
-    allKeys: fullKeys,
+  // Build parse context (shared with DEX decoders and swap parser)
+  const ctx = buildParseContext(meta, fullKeys)
+
+  // 4. Pre-index inner instructions by outer instruction index
+  const innerByIndex = new Map<number, (typeof meta.innerInstructions)[number]>()
+  for (const inner of meta.innerInstructions) {
+    innerByIndex.set(inner.index, inner)
   }
 
-  // 3. Decode each top-level instruction
+  // 5. Decode each top-level instruction
   const entries: DecodedInstructionEntry[] = []
   for (let i = 0; i < message.instructions.length; i++) {
     const instr = message.instructions[i]!
     const decoded = decodeTopLevel(instr, fullKeys, ctx)
 
     // Collect inner instructions for this index
-    const innerSet = meta.innerInstructions.find((s) => s.index === i)
+    const innerSet = innerByIndex.get(i)
     const innerDecoded: DecodedInstruction[] = []
     if (innerSet) {
       for (const inner of innerSet.instructions) {
@@ -73,11 +79,11 @@ export function parseFullTransaction(
     })
   }
 
-  // 4. Detect MEV tips
+  // 6. Detect MEV tips
   const tips = detectTips(entries)
 
-  // 5. Optionally detect swap (pass pre-computed tips to avoid redundant detection)
-  const swap = _parseTransactionWithPrepared(message, meta, fullKeys, notification, options, tips) ?? undefined
+  // 7. Optionally detect swap (pass pre-computed ctx + tips to avoid redundant work)
+  const swap = _parseTransactionWithPrepared(message, meta, fullKeys, ctx, notification, options, tips) ?? undefined
 
   const { logMessages, computeUnitsConsumed } = notification.transaction.meta
 

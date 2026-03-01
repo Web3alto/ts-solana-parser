@@ -1,4 +1,5 @@
-import { z } from 'zod'
+import { ZodError, z } from 'zod'
+import { ValidationError } from './errors.ts'
 
 export const TokenBalanceSchema = z.object({
   accountIndex: z.number().int().nonnegative(),
@@ -39,6 +40,21 @@ export const TransactionDataSchema = z.object({
   signatures: z.array(z.string()),
 })
 
+/** Lenient tuple schema: accepts any string encoding (parser handles unknown encodings gracefully) */
+const EncodedTransactionTupleLenientSchema = z.tuple([z.string(), z.string()])
+
+export const TransactionResultSchema = z.object({
+  meta: TransactionMetaSchema,
+  transaction: z.union([EncodedTransactionTupleLenientSchema, TransactionDataSchema]),
+})
+
+export const TransactionNotificationSchema = z.object({
+  signature: z.string(),
+  slot: z.number().int().nonnegative(),
+  blockTime: z.number().nullish(),
+  transaction: TransactionResultSchema,
+})
+
 export const SwapInputSchema = z.object({
   transaction: z.union([EncodedTransactionTupleSchema, TransactionDataSchema]),
   meta: TransactionMetaSchema,
@@ -48,3 +64,13 @@ export const SwapInputSchema = z.object({
 })
 
 export const SwapInputArraySchema = z.array(SwapInputSchema)
+
+/** Validate data against a Zod schema, converting ZodErrors to ValidationError. */
+export function validateWithZod(schema: z.ZodType, data: unknown): void {
+  try {
+    schema.parse(data)
+  } catch (err) {
+    if (err instanceof ZodError) throw new ValidationError(err.issues)
+    throw err
+  }
+}
