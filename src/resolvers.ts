@@ -1,9 +1,10 @@
-import { decodeBase64, encodeBase58 } from './idl/codec.ts'
+import { getAddressLookupTableDecoder } from '@solana-program/address-lookup-table'
+import { decodeBase64 } from './idl/codec.ts'
 import type { AddressLookupResolution, AddressTableLookup, ParserOptions } from './types.ts'
 import { sleep } from './util.ts'
 
-const LOOKUP_TABLE_META_SIZE = 56
 const ADDRESS_LOOKUP_TABLE_PROGRAM = 'AddressLookupTab1e1111111111111111111111111'
+const altDecoder = getAddressLookupTableDecoder()
 
 interface RpcResponse<T> {
   result: T
@@ -39,19 +40,8 @@ export interface RpcBackedParserOptions extends ParserOptions {
 }
 
 function parseLookupTableAddresses(data: Uint8Array): string[] {
-  if (data.length < LOOKUP_TABLE_META_SIZE) {
-    throw new Error('Invalid ALT account: data too short')
-  }
-  const addressBytes = data.length - LOOKUP_TABLE_META_SIZE
-  if (addressBytes % 32 !== 0) {
-    throw new Error('Invalid ALT account: unaligned address payload')
-  }
-
-  const out: string[] = []
-  for (let offset = LOOKUP_TABLE_META_SIZE; offset + 32 <= data.length; offset += 32) {
-    out.push(encodeBase58(data.subarray(offset, offset + 32)))
-  }
-  return out
+  const decoded = altDecoder.decode(data)
+  return Array.from(decoded.addresses)
 }
 
 class RpcAddressLookupResolver {

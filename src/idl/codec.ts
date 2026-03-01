@@ -99,24 +99,6 @@ export function decodeBase64(str: string): Uint8Array {
   }
 }
 
-export function readCompactU16(data: Uint8Array, offset: number): { value: number; size: number } {
-  let value = 0
-  let size = 0
-  for (;;) {
-    if (offset + size >= data.length) {
-      throw new DecodeError('Unexpected end of data while reading compact-u16')
-    }
-    if (size > 2) {
-      throw new DecodeError('Invalid compact-u16 length')
-    }
-    const byte = data[offset + size]!
-    value |= (byte & 0x7f) << (size * 7)
-    size++
-    if ((byte & 0x80) === 0) break
-  }
-  return { value, size }
-}
-
 export function matchDiscriminator(data: Uint8Array, expected: readonly number[]): boolean {
   if (data.length < 8) return false
   for (let i = 0; i < 8; i++) {

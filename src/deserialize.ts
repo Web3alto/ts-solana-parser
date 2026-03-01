@@ -1,141 +1,98 @@
+import { getCompiledTransactionMessageDecoder, getTransactionDecoder } from '@solana/kit'
 import { DecodeError } from './errors.ts'
-import { encodeBase58, readCompactU16 } from './idl/codec.ts'
+import { encodeBase58 } from './idl/codec.ts'
 import type { CompiledInstruction, TransactionMessage } from './types.ts'
+
+const txDecoder = getTransactionDecoder()
+const msgDecoder = getCompiledTransactionMessageDecoder()
 
 export function deserializeTransaction(bytes: Uint8Array): {
   message: TransactionMessage
   signatures: string[]
 } {
-  let offset = 0
-  const ensureAvailable = (size: number, section: string) => {
-    if (offset + size > bytes.length) {
-      throw new DecodeError(`Unexpected end of transaction bytes while reading ${section}`)
+  let messageBytes: Uint8Array
+  let signaturesMap: Record<string, Uint8Array>
+  try {
+    const decoded = txDecoder.decode(bytes)
+    // Kit returns branded ReadonlyUint8Array and SignaturesMap — cast at the boundary
+    messageBytes = new Uint8Array(decoded.messageBytes as unknown as ArrayLike<number>)
+    signaturesMap = decoded.signatures as unknown as Record<string, Uint8Array>
+  } catch (err) {
+    // Kit throws on unsupported versions — propagate with our expected message format
+    const msg = err instanceof Error ? err.message : ''
+    const versionMatch = msg.match(/version (\d+)/)
+    if (versionMatch) {
+      throw new DecodeError(`Unsupported transaction version: ${versionMatch[1]}`)
     }
+    throw new DecodeError('Failed to decode transaction bytes')
   }
 
-  // 1. Signatures
-  const numSigs = readCompactU16(bytes, offset)
-  offset += numSigs.size
+  let header: { numSignerAccounts: number; numReadonlySignerAccounts: number; numReadonlyNonSignerAccounts: number }
+  let staticAccounts: string[]
+  let lifetimeToken: string
+  let kitInstructions: Array<{
+    programAddressIndex: number
+    accountIndices?: readonly number[]
+    data?: ArrayLike<number>
+  }>
+  let kitLookups:
+    | Array<{
+        lookupTableAddress: string
+        writableIndexes: readonly number[]
+        readonlyIndexes: readonly number[]
+      }>
+    | undefined
+  try {
+    // Cast through unknown: Kit returns branded Address[], ReadonlyUint8Array, etc.
+    const msg = msgDecoder.decode(messageBytes) as unknown as {
+      header: typeof header
+      staticAccounts: string[]
+      lifetimeToken: string
+      instructions: typeof kitInstructions
+      addressTableLookups?: typeof kitLookups
+    }
+    header = msg.header
+    staticAccounts = msg.staticAccounts
+    lifetimeToken = msg.lifetimeToken
+    kitInstructions = msg.instructions
+    kitLookups = msg.addressTableLookups
+  } catch {
+    throw new DecodeError('Failed to decode transaction message bytes')
+  }
 
+  // Convert Kit's signature map {base58Address: SignatureBytes} to base58 strings
   const signatures: string[] = []
-  for (let i = 0; i < numSigs.value; i++) {
-    ensureAvailable(64, 'signature')
-    signatures.push(encodeBase58(bytes.subarray(offset, offset + 64)))
-    offset += 64
+  for (const sigBytes of Object.values(signaturesMap)) {
+    signatures.push(encodeBase58(new Uint8Array(sigBytes)))
   }
 
-  // 2. Detect version: if first byte has high bit set, it's versioned (v0)
-  ensureAvailable(1, 'version byte')
-  const firstMessageByte = bytes[offset]!
-  const isVersioned = (firstMessageByte & 0x80) !== 0
-  if (isVersioned) {
-    const version = firstMessageByte & 0x7f
-    if (version !== 0) {
-      throw new DecodeError(`Unsupported transaction version: ${version}`)
-    }
-    offset++ // skip version prefix byte
-  }
+  // Convert Kit instructions to our CompiledInstruction format
+  const instructions: CompiledInstruction[] = kitInstructions.map((ix) => ({
+    programIdIndex: ix.programAddressIndex,
+    accounts: ix.accountIndices ? Array.from(ix.accountIndices) : [],
+    data: ix.data ? encodeBase58(new Uint8Array(ix.data as ArrayLike<number>)) : '',
+  }))
 
-  // 3. Message header (3 bytes)
-  ensureAvailable(3, 'message header')
-  const numRequiredSignatures = bytes[offset]!
-  const numReadonlySignedAccounts = bytes[offset + 1]!
-  const numReadonlyUnsignedAccounts = bytes[offset + 2]!
-  offset += 3
-
-  // 4. Account keys
-  const numKeys = readCompactU16(bytes, offset)
-  offset += numKeys.size
-
-  const accountKeys: string[] = []
-  for (let i = 0; i < numKeys.value; i++) {
-    ensureAvailable(32, 'account key')
-    accountKeys.push(encodeBase58(bytes.subarray(offset, offset + 32)))
-    offset += 32
-  }
-
-  // 5. Recent blockhash
-  ensureAvailable(32, 'recent blockhash')
-  const recentBlockhash = encodeBase58(bytes.subarray(offset, offset + 32))
-  offset += 32
-
-  // 6. Instructions
-  const numIxs = readCompactU16(bytes, offset)
-  offset += numIxs.size
-
-  const instructions: CompiledInstruction[] = []
-  for (let i = 0; i < numIxs.value; i++) {
-    ensureAvailable(1, 'instruction programIdIndex')
-    const programIdIndex = bytes[offset]!
-    offset++
-
-    const numAccounts = readCompactU16(bytes, offset)
-    offset += numAccounts.size
-
-    const accounts: number[] = []
-    for (let j = 0; j < numAccounts.value; j++) {
-      ensureAvailable(1, 'instruction account index')
-      accounts.push(bytes[offset]!)
-      offset++
-    }
-
-    const dataLen = readCompactU16(bytes, offset)
-    offset += dataLen.size
-
-    ensureAvailable(dataLen.value, 'instruction data')
-    const data = encodeBase58(bytes.subarray(offset, offset + dataLen.value))
-    offset += dataLen.value
-
-    instructions.push({ programIdIndex, accounts, data })
-  }
-
+  // Convert Kit address table lookups to our format
   let addressTableLookups: TransactionMessage['addressTableLookups'] | undefined
-  if (isVersioned) {
-    const numLookups = readCompactU16(bytes, offset)
-    offset += numLookups.size
-
-    const lookups: NonNullable<TransactionMessage['addressTableLookups']> = []
-    for (let i = 0; i < numLookups.value; i++) {
-      ensureAvailable(32, 'address table lookup account key')
-      const accountKey = encodeBase58(bytes.subarray(offset, offset + 32))
-      offset += 32
-
-      const writableLen = readCompactU16(bytes, offset)
-      offset += writableLen.size
-      const writableIndexes: number[] = []
-      for (let j = 0; j < writableLen.value; j++) {
-        ensureAvailable(1, 'address table writable index')
-        writableIndexes.push(bytes[offset]!)
-        offset++
-      }
-
-      const readonlyLen = readCompactU16(bytes, offset)
-      offset += readonlyLen.size
-      const readonlyIndexes: number[] = []
-      for (let j = 0; j < readonlyLen.value; j++) {
-        ensureAvailable(1, 'address table readonly index')
-        readonlyIndexes.push(bytes[offset]!)
-        offset++
-      }
-
-      lookups.push({ accountKey, writableIndexes, readonlyIndexes })
-    }
-
-    if (lookups.length > 0) {
-      addressTableLookups = lookups
-    }
+  if (kitLookups && kitLookups.length > 0) {
+    addressTableLookups = kitLookups.map((lookup) => ({
+      accountKey: lookup.lookupTableAddress,
+      writableIndexes: Array.from(lookup.writableIndexes),
+      readonlyIndexes: Array.from(lookup.readonlyIndexes),
+    }))
   }
 
   return {
     message: {
-      accountKeys,
+      accountKeys: Array.from(staticAccounts),
       instructions,
-      recentBlockhash,
+      recentBlockhash: lifetimeToken,
       addressTableLookups,
       header: {
-        numRequiredSignatures,
-        numReadonlySignedAccounts,
-        numReadonlyUnsignedAccounts,
+        numRequiredSignatures: header.numSignerAccounts,
+        numReadonlySignedAccounts: header.numReadonlySignerAccounts,
+        numReadonlyUnsignedAccounts: header.numReadonlyNonSignerAccounts,
       },
     },
     signatures,
