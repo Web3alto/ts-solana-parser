@@ -51,6 +51,44 @@ describe('parseSwapDetailed (detailed)', () => {
     expect(selected).toBe('user')
   })
 
+  test('classifies failed transaction as not_swap with META_ERR', () => {
+    const user = 'User111111111111111111111111111111111111111'
+    const notification: TransactionNotification = {
+      signature: 'failed-sig',
+      slot: 1,
+      transaction: {
+        meta: {
+          err: { InstructionError: [0, { Custom: 1 }] },
+          fee: 5000,
+          preBalances: [1_000_000_000],
+          postBalances: [999_995_000],
+          preTokenBalances: [],
+          postTokenBalances: [],
+          innerInstructions: [],
+          loadedAddresses: null,
+        },
+        transaction: {
+          signatures: ['failed-sig'],
+          message: {
+            accountKeys: [user],
+            recentBlockhash: '11111111111111111111111111111111',
+            instructions: [
+              {
+                programId: 'CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C',
+                accounts: ['Pool11111111111111111111111111111111111111'],
+                data: '1111',
+              },
+            ],
+          },
+        },
+      },
+    }
+
+    const outcome = parseSwapDetailed(notificationToSwapInput(notification))
+    expect(outcome.kind).toBe('not_swap')
+    expect(outcome.code).toBe('META_ERR')
+  })
+
   test('rejects unsupported encoding with ValidationError', () => {
     const raw = buildMinimalTxBytes()
     const tuple = [encodeBase58(raw), 'base85'] as unknown as EncodedTransactionTuple
@@ -241,6 +279,7 @@ describe('parseSwapDetailed (detailed)', () => {
 
     const outcome = parseSwapDetailed(notificationToSwapInput(notification))
     expect(outcome.kind).toBe('swap')
+    expect(outcome.swap?.hopCount).toBe(2)
     expect(outcome.swap?.routeType).toBe('multi-hop')
     expect(outcome.swap?.warnings).toContain('MULTI_HOP_ROUTE')
   })

@@ -3,8 +3,8 @@ import { SOL_MINT } from '../src/constants.ts'
 import { encodeBase58 } from '../src/idl/codec.ts'
 import type { DecodedInstruction } from '../src/instruction-types.ts'
 import { parseFullSwapTransaction } from '../src/parse-swap.ts'
-import type { TokenBalance, TransactionNotification } from '../src/types.ts'
-import { encodeIxData, notificationToSwapInput } from './helpers.ts'
+import type { TransactionNotification } from '../src/types.ts'
+import { encodeIxData, notificationToSwapInput, tb } from './helpers.ts'
 
 // Helper to access instruction-specific fields without `as any`
 function f(instr: DecodedInstruction): Record<string, unknown> {
@@ -30,19 +30,6 @@ function buildTransferSolData(lamports: bigint): Uint8Array {
   writeU32LE(data, 2, 0) // SystemIx.TransferSol
   writeU64LE(data, lamports, 4)
   return data
-}
-
-function tb(accountIndex: number, mint: string, amount: string, decimals: number, owner: string): TokenBalance {
-  return {
-    accountIndex,
-    mint,
-    owner,
-    uiTokenAmount: {
-      amount,
-      decimals,
-      uiAmount: null,
-    },
-  }
 }
 
 // ── Constants ──

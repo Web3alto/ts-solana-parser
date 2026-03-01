@@ -63,6 +63,15 @@ export function tokenBalance(accountIndex: number, mint: string, owner?: string)
   }
 }
 
+export function tb(accountIndex: number, mint: string, amount: string, decimals: number, owner: string): TokenBalance {
+  return {
+    accountIndex,
+    mint,
+    owner,
+    uiTokenAmount: { amount, decimals, uiAmount: null },
+  }
+}
+
 export function buildTestContext(
   allKeys: string[],
   preTokenBalances: TokenBalance[],

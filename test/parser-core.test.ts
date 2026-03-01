@@ -254,6 +254,35 @@ describe('matchDiscriminator', () => {
 })
 
 describe('parseSwap (core)', () => {
+  test('returns null for a failed transaction (meta.err set)', () => {
+    const notification: TransactionNotification = {
+      signature: 'failed-sig',
+      slot: 1,
+      transaction: {
+        meta: {
+          err: { InstructionError: [0, { Custom: 1 }] },
+          fee: 5000,
+          preBalances: [1_000_000],
+          postBalances: [999_995],
+          preTokenBalances: [],
+          postTokenBalances: [],
+          innerInstructions: [],
+          loadedAddresses: null,
+        },
+        transaction: {
+          message: {
+            accountKeys: ['11111111111111111111111111111111'],
+            instructions: [],
+            recentBlockhash: '11111111111111111111111111111111',
+          },
+          signatures: ['failed-sig'],
+        },
+      },
+    }
+
+    expect(parseSwap(notificationToSwapInput(notification))).toBeNull()
+  })
+
   test('is null-safe when token balance and inner instruction arrays are null', () => {
     const notification: TransactionNotification = {
       signature: 'sig',

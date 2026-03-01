@@ -280,7 +280,7 @@ interface ParseOutcome {
 ```bash
 bun install
 
-bun test              # run tests (178 tests)
+bun test              # run tests (200+ tests)
 bun run typecheck     # TypeScript check
 bun run lint          # Biome lint
 bun run format:check  # Prettier check

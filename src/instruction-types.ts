@@ -219,6 +219,70 @@ export type TokenInstruction =
       amount: bigint
       decimals: number
     }
+  | { program: 'token-2022'; type: 'initializeImmutableOwner'; account: string }
+  | { program: 'token-2022'; type: 'amountToUiAmount'; mint: string; amount: bigint }
+  | { program: 'token-2022'; type: 'uiAmountToAmount'; mint: string; uiAmount: string }
+  | {
+      program: 'token-2022'
+      type: 'initializeMintCloseAuthority'
+      mint: string
+      closeAuthority: string | null
+    }
+  | {
+      program: 'token-2022'
+      type: 'initializeTransferFeeConfig'
+      mint: string
+      transferFeeConfigAuthority: string | null
+      withdrawWithheldAuthority: string | null
+      transferFeeBasisPoints: number
+      maximumFee: bigint
+    }
+  | {
+      program: 'token-2022'
+      type: 'transferCheckedWithFee'
+      source: string
+      mint: string
+      destination: string
+      authority: string
+      amount: bigint
+      decimals: number
+      fee: bigint
+    }
+  | {
+      program: 'token-2022'
+      type: 'withdrawWithheldTokensFromMint'
+      mint: string
+      destination: string
+      authority: string
+    }
+  | {
+      program: 'token-2022'
+      type: 'withdrawWithheldTokensFromAccounts'
+      mint: string
+      destination: string
+      authority: string
+      sources: string[]
+    }
+  | { program: 'token-2022'; type: 'harvestWithheldTokensToMint'; mint: string; sources: string[] }
+  | { program: 'token-2022'; type: 'initializeDefaultAccountState'; mint: string; state: number }
+  | {
+      program: 'token-2022'
+      type: 'updateDefaultAccountState'
+      mint: string
+      authority: string
+      state: number
+    }
+  | {
+      program: 'token-2022'
+      type: 'reallocate'
+      account: string
+      payer: string
+      authority: string
+      extensionTypes: number[]
+    }
+  | { program: 'token-2022'; type: 'enableMemoTransfer'; account: string; authority: string }
+  | { program: 'token-2022'; type: 'disableMemoTransfer'; account: string; authority: string }
+  | { program: 'token-2022'; type: 'createNativeMint'; payer: string; nativeMint: string }
 
 // ── Compute Budget ──
 

@@ -9,11 +9,8 @@ import {
   normalizeMint,
   selectInputOutputChanges,
 } from '../src/parser/balance.ts'
-import type { TokenBalance, TokenChange } from '../src/types.ts'
-
-function tb(accountIndex: number, mint: string, amount: string, decimals: number, owner: string): TokenBalance {
-  return { accountIndex, mint, owner, uiTokenAmount: { amount, decimals, uiAmount: null } }
-}
+import type { TokenChange } from '../src/types.ts'
+import { tb } from './helpers.ts'
 
 function makeMinimalMeta(overrides: Partial<NormalizedTransactionMeta> = {}): NormalizedTransactionMeta {
   return {

@@ -18,6 +18,14 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
+      - name: Build
+        run: bun run build
+
+      - name: Verify dist artifacts
+        run: |
+          test -f dist/lib.js || (echo "dist/lib.js missing" && exit 1)
+          test -f dist/lib.d.ts || (echo "dist/lib.d.ts missing" && exit 1)
+
       - name: Typecheck
         run: bun run typecheck
 

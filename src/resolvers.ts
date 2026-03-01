@@ -39,6 +39,7 @@ export interface ResolverConfig {
   requestTimeoutMs?: number | undefined
   retries?: number | undefined
   retryBaseMs?: number | undefined
+  maxConcurrency?: number | undefined
   onError?: ((ctx: { tableAccount?: string | undefined; error: unknown }) => void) | undefined
 }
 
@@ -61,6 +62,7 @@ class RpcAddressLookupResolver {
   private readonly requestTimeoutMs: number
   private readonly retries: number
   private readonly retryBaseMs: number
+  private readonly maxConcurrency: number
   private readonly onError?: ((ctx: { tableAccount?: string | undefined; error: unknown }) => void) | undefined
 
   private readonly lookupCache = new Map<string, AddressLookupCacheEntry>()
@@ -75,6 +77,7 @@ class RpcAddressLookupResolver {
     this.requestTimeoutMs = config.requestTimeoutMs ?? 5_000
     this.retries = config.retries ?? 2
     this.retryBaseMs = config.retryBaseMs ?? 300
+    this.maxConcurrency = config.maxConcurrency ?? 10
     this.onError = config.onError
   }
 
@@ -188,16 +191,21 @@ class RpcAddressLookupResolver {
 
   async warmAddressLookupTables(tableAccounts: string[]): Promise<void> {
     const unique = [...new Set(tableAccounts)]
-    const waits: Promise<unknown>[] = []
+    const toFetch: string[] = []
 
     for (const tableAccount of unique) {
       const cached = this.lookupCache.get(tableAccount)
       if (cached && this.isFresh(cached.fetchedAt)) continue
-      waits.push(this.queueLookupFetch(tableAccount))
+      toFetch.push(tableAccount)
     }
 
-    if (waits.length === 0) return
-    await Promise.all(waits)
+    if (toFetch.length === 0) return
+
+    // Process in chunks to avoid overwhelming RPC nodes
+    for (let i = 0; i < toFetch.length; i += this.maxConcurrency) {
+      const chunk = toFetch.slice(i, i + this.maxConcurrency)
+      await Promise.all(chunk.map((t) => this.queueLookupFetch(t)))
+    }
   }
 
   resolveAddressTableLookups(lookups: AddressTableLookup[]): AddressLookupResolution | null {
@@ -247,6 +255,7 @@ const ResolverConfigSchema = z.object({
   requestTimeoutMs: z.number().positive().optional(),
   retries: z.number().int().nonnegative().optional(),
   retryBaseMs: z.number().positive().optional(),
+  maxConcurrency: z.number().int().positive().optional(),
 })
 
 /** Create {@link ParserOptions} with RPC-backed address lookup table resolution. Validates config with Zod. */

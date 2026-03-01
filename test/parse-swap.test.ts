@@ -8,8 +8,8 @@ import {
   parseSwaps,
   parseSwapsDetailed,
 } from '../src/parse-swap.ts'
-import type { ParserOptions, TokenBalance, TransactionNotification } from '../src/types.ts'
-import { encodeIxData, notificationToSwapInput } from './helpers.ts'
+import type { ParserOptions, TransactionNotification } from '../src/types.ts'
+import { encodeIxData, notificationToSwapInput, tb } from './helpers.ts'
 
 // ── Fixtures ──
 
@@ -18,19 +18,6 @@ const TOKEN_MINT = 'TknMint1111111111111111111111111111111111111'
 const POOL = 'Pool111111111111111111111111111111111111111'
 const PUMPFUN_PROGRAM = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P'
 const PUMPFUN_BUY_DISC = [102, 6, 61, 18, 1, 218, 235, 234] as const
-
-function tb(accountIndex: number, mint: string, amount: string, decimals: number, owner: string): TokenBalance {
-  return {
-    accountIndex,
-    mint,
-    owner,
-    uiTokenAmount: {
-      amount,
-      decimals,
-      uiAmount: Number(amount) / 10 ** decimals,
-    },
-  }
-}
 
 function buildPumpfunBuyNotification(): TransactionNotification {
   return {

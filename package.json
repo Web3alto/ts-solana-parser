@@ -2,18 +2,28 @@
   "name": "ts-solana-parser",
   "version": "1.0.0",
   "description": "Solana transaction parser with full instruction decoding and DEX swap detection for 10 protocols. Built on @solana/kit.",
-  "module": "src/lib.ts",
-  "types": "src/lib.ts",
+  "module": "./dist/lib.js",
+  "types": "./dist/lib.d.ts",
   "type": "module",
   "exports": {
-    ".": "./src/lib.ts"
+    ".": {
+      "bun": "./src/lib.ts",
+      "import": {
+        "types": "./dist/lib.d.ts",
+        "default": "./dist/lib.js"
+      }
+    }
   },
   "files": [
     "src/",
+    "dist/",
     "LICENSE",
     "README.md"
   ],
   "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "bun run build",
     "test": "bun test",
     "typecheck": "bunx tsc --noEmit",
     "lint": "bunx biome check src/ test/",
@@ -31,7 +41,9 @@
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
     "@types/bun": "latest",
-    "prettier": "^3.5.0"
+    "prettier": "^3.5.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -48,6 +60,7 @@
   },
   "keywords": ["solana", "parser", "swap", "dex", "transaction", "mev"],
   "engines": {
+    "node": ">=18",
     "bun": ">=1.0.0"
   }
 }
