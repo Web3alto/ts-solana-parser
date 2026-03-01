@@ -1,6 +1,6 @@
 # solana-swap-parser
 
-Solana transaction parser with full instruction decoding and DEX swap detection. Decodes System, Token, Compute Budget, ATA, Memo, and 10 DEX protocol instructions. Built on `@solana/kit`.
+Solana transaction parser with full instruction decoding, DEX swap detection, and MEV tip identification. Decodes System, Token, Compute Budget, ATA, Memo, and 10 DEX protocol instructions. Built on `@solana/kit`.
 
 ## Install
 
@@ -24,6 +24,7 @@ if (result) {
   console.log(result.swapType)         // "pumpfun-buy"
   console.log(result.inputAmountDecimal) // "1.5"
   console.log(result.outputMint)        // "TknMint..."
+  console.log(result.tips)              // [{ provider: "Jito", lamports: 10000n, recipient: "3AVi..." }]
 }
 ```
 
@@ -31,16 +32,51 @@ if (result) {
 
 | Protocol | Program ID | File |
 |---|---|---|
+| **Pump** | | |
 | PumpFun | `6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P` | `pumpfun.ts` |
 | PumpSwap | `pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA` | `pumpswap.ts` |
+| **Raydium** | | |
+| Raydium AMM | `675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8` | `raydium-amm.ts` |
 | Raydium CPMM | `CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C` | `raydium-cpmm.ts` |
 | Raydium CLMM | `CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK` | `raydium-clmm.ts` |
 | Raydium LaunchLab | `LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj` | `raydium-launchlab.ts` |
-| Meteora DBC | `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` | `meteora-dbc.ts` |
-| Meteora DAMMv2 | `cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG` | `meteora-dammv2.ts` |
-| Meteora DLMM | `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo` | `meteora-dlmm.ts` |
-| Raydium AMM | `675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8` | `raydium-amm.ts` |
+| **Meteora** | | |
 | Meteora DAMM | `Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB` | `meteora-damm.ts` |
+| Meteora DAMMv2 | `cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG` | `meteora-dammv2.ts` |
+| Meteora DBC | `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` | `meteora-dbc.ts` |
+| Meteora DLMM | `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo` | `meteora-dlmm.ts` |
+
+## MEV tip detection
+
+The parser detects SOL transfers to known MEV tip addresses and surfaces them as structured `MevTip` data on both `ParsedSwap` and `FullTransactionResult`.
+
+| Provider | Addresses |
+|---|---|
+| Jito | 8 |
+| Temporal | 17 |
+| NextBlock | 8 |
+| BloxRoute | 1 |
+| ZeroSlot | 11 |
+| BlockRazor | 14 |
+| Helius | 10 |
+| Astralane | 8 |
+| Stellium | 5 |
+| Flashblock | 10 |
+| Node1 | 6 |
+| Falcon | 10 |
+
+```ts
+import type { MevTip } from 'solana-swap-parser'
+
+// Available on both ParsedSwap and FullTransactionResult
+if (result.tips) {
+  for (const tip of result.tips) {
+    console.log(tip.provider)   // "Jito" | "Temporal" | "NextBlock" | ...
+    console.log(tip.lamports)   // bigint, e.g. 10000n
+    console.log(tip.recipient)  // tip account address
+  }
+}
+```
 
 ## Full transaction parsing
 
@@ -69,6 +105,11 @@ if (result) {
       case 'dex':          // DEX swap (10 protocols)
       case 'unknown':      // unrecognized program
     }
+  }
+
+  // MEV tips detected across the entire transaction
+  if (result.tips) {
+    console.log(`${result.tips.length} tip(s) found`)
   }
 
   if (result.swap) {
@@ -202,6 +243,7 @@ interface FullTransactionResult {
   computeUnitsConsumed?: number
   logMessages?: string[]
   instructions: DecodedInstructionEntry[]
+  tips?: MevTip[]
   swap?: ParsedSwap
 }
 ```
@@ -232,11 +274,22 @@ interface ParsedSwap {
   outputAmountDecimal: string
   outputAmountNumber?: number
   outputTokenProgram?: TokenProgramKind
+  tips?: MevTip[]           // MEV tips detected in this transaction
   pool?: string
   swapType?: SwapType       // e.g. "pumpfun-buy", "raydium-cpmm-sell"
   confidence: 'high' | 'medium' | 'low'
   warnings: WarningCode[]
   fee: number               // transaction fee in lamports
+}
+```
+
+### `MevTip`
+
+```ts
+interface MevTip {
+  provider: TipProvider     // "Jito" | "Temporal" | "NextBlock" | ...
+  lamports: bigint          // tip amount in lamports
+  recipient: string         // tip account address
 }
 ```
 
@@ -257,6 +310,7 @@ const validated = SwapInputSchema.parse(untrustedData)
 3. **IDL decode** — Matches 8-byte discriminators (`sha256("global:<method>")`) to extract swap direction and amounts
 4. **User identification** — Finds the real swapper via IDL signer or token balance heuristics (not just the fee payer)
 5. **Balance diffs** — Computes pre/post token balance deltas, normalizes WSOL to SOL, and cross-validates against IDL results
+6. **Tip detection** — Identifies SOL transfers to 108 known MEV tip addresses across 12 providers
 
 ## Development
 
