@@ -1,9 +1,11 @@
 import { decodeBase58 } from './codec.ts'
+import { meteoraDammParser } from './programs/meteora-damm.ts'
 import { meteoraDammv2Parser } from './programs/meteora-dammv2.ts'
 import { meteoraDbcParser } from './programs/meteora-dbc.ts'
 import { meteoraDlmmParser } from './programs/meteora-dlmm.ts'
 import { pumpfunParser } from './programs/pumpfun.ts'
 import { pumpswapParser } from './programs/pumpswap.ts'
+import { raydiumAmmParser } from './programs/raydium-amm.ts'
 import { raydiumClmmParser } from './programs/raydium-clmm.ts'
 import { raydiumCpmmParser } from './programs/raydium-cpmm.ts'
 import { raydiumLaunchLabParser } from './programs/raydium-launchlab.ts'
@@ -20,6 +22,8 @@ for (const parser of [
   meteoraDbcParser,
   meteoraDammv2Parser,
   meteoraDlmmParser,
+  raydiumAmmParser,
+  meteoraDammParser,
 ]) {
   registry.set(parser.programId, parser)
 }

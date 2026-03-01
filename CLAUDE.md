@@ -1,6 +1,6 @@
 # solana-swap-parser
 
-Solana swap parser library. Parses swaps from 8 DEX protocols using custom IDL-level instruction decoding. Zod-validated public API with zero-overhead internal parsing.
+Solana swap parser library. Parses swaps from 10 DEX protocols using custom IDL-level instruction decoding. Zod-validated public API with zero-overhead internal parsing.
 
 ## Commands
 
@@ -89,7 +89,7 @@ interface ProgramParser {
 }
 ```
 
-Parsers use **hardcoded 8-byte discriminators** from `sha256("global:<method>")`. No Anchor dependency — raw byte matching via `matchDiscriminator()`.
+Most parsers use **hardcoded 8-byte discriminators** from `sha256("global:<method>")`. Non-Anchor programs (Raydium AMM) use 1-byte instruction indices instead. No Anchor dependency — raw byte matching via `matchDiscriminator()`.
 
 Registry (`registry.ts`) maps program ID → parser. `tryParseInstruction()` decodes base58 data and dispatches.
 
@@ -105,6 +105,8 @@ Registry (`registry.ts`) maps program ID → parser. `tryParseInstruction()` dec
 | Meteora DBC | `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` | `meteora-dbc.ts` |
 | Meteora DAMMv2 | `cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG` | `meteora-dammv2.ts` |
 | Meteora DLMM | `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo` | `meteora-dlmm.ts` |
+| Raydium AMM | `675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8` | `raydium-amm.ts` |
+| Meteora DAMM | `Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB` | `meteora-damm.ts` |
 
 ### Key types
 
@@ -113,7 +115,7 @@ Registry (`registry.ts`) maps program ID → parser. `tryParseInstruction()` dec
 - `SwapInput` — Validated convenience API input type
 - `RawSwap` — IDL-level result (type, tokenFrom/To, amountFrom/To, signer)
 - `SwapType` — Union of `{protocol}-buy` | `{protocol}-sell` strings
-- `Protocol` — Enum: PumpFun, PumpSwap, RaydiumCPMM, RaydiumCLMM, RaydiumLaunchLab, MeteoraDBC, MeteoraDAMMv2, MeteoraDLMM
+- `Protocol` — Enum: PumpFun, PumpSwap, RaydiumCPMM, RaydiumCLMM, RaydiumLaunchLab, MeteoraDBC, MeteoraDAMMv2, MeteoraDLMM, RaydiumAMM, MeteoraDAMM
 - `TokenChange` — `{ mint, rawDelta: bigint, decimals }` (readonly)
 
 ### Key constants (constants.ts)
@@ -141,6 +143,7 @@ Follows semver. Version lives in `package.json` and is tracked via git tags (`v0
 - `0.5.0` — Batch transaction parsing API (`parseSwaps`/`parseSwapsDetailed`)
 - `0.6.0` — Raydium CLMM protocol support (7th protocol)
 - `0.7.0` — Meteora DLMM protocol support (8th protocol)
+- `0.8.0` — Raydium AMM + Meteora DAMM protocol support (9th + 10th protocols)
 
 ## Conventions
 
@@ -151,6 +154,8 @@ Follows semver. Version lives in `package.json` and is tracked via git tags (`v0
 - Pool address extraction uses fixed account indices per protocol
 - Meteora DBC and DAMMv2 share a factory (`meteora-common.ts`) — only account layout differs
 - Meteora DLMM has its own parser (`meteora-dlmm.ts`) — different account layout and 6 swap instruction variants
+- Raydium AMM v4 is a non-Anchor program — uses 1-byte instruction index instead of 8-byte discriminator
+- Raydium AMM and Meteora DAMM resolve mints from token accounts via ParseContext (no mint accounts in instructions)
 - User detection prefers IDL signer, falls back to balance heuristic
 - Transaction deserialization handles versioned (v0) and legacy formats
 - Output types (`ParsedSwap`, `ParseOutcome`, `TokenChange`) are readonly

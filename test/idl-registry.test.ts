@@ -13,6 +13,8 @@ const RAYDIUM_LAUNCHLAB_PROGRAM = 'LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj'
 const METEORA_DBC_PROGRAM = 'dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN'
 const METEORA_DAMMV2_PROGRAM = 'cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG'
 const METEORA_DLMM_PROGRAM = 'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'
+const RAYDIUM_AMM_PROGRAM = '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8'
+const METEORA_DAMM_PROGRAM = 'Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB'
 
 describe('IDL registry', () => {
   test('parses PumpFun buy', () => {
@@ -581,6 +583,122 @@ describe('IDL registry', () => {
     expect(parsed?.tokenTo).toBe(mintX)
     expect(parsed?.amountFrom).toBe(2_000_000_000n)
     expect(parsed?.amountTo).toBe(88_000n)
+    expect(parsed?.signer).toBe(signer)
+  })
+
+  test('parses Raydium AMM swapBaseIn buy', () => {
+    const signer = 'User111111111111111111111111111111111111111'
+    const sourceAccount = 'SrcTknAcc1111111111111111111111111111111111'
+    const destAccount = 'DstTknAcc1111111111111111111111111111111111'
+    const accounts = new Array<string>(18).fill('x')
+    accounts[15] = sourceAccount
+    accounts[16] = destAccount
+    accounts[17] = signer
+    const tokenMint = 'Tkn1111111111111111111111111111111111111111'
+    // Data: [1 byte index=9][8 amountIn][8 minAmountOut]
+    const data = encodeBase58(Uint8Array.from([9, ...u64le(1_000_000_000n), ...u64le(50_000n)]))
+    const allKeys = [...accounts.slice(0, 15), sourceAccount, destAccount, signer]
+    const ctx: ParseContext = {
+      allKeys,
+      preTokenBalances: [tokenBalance(15, WSOL_MINT), tokenBalance(16, tokenMint)],
+      postTokenBalances: [],
+    }
+
+    const parsed = tryParseInstruction(RAYDIUM_AMM_PROGRAM, accounts, data, ctx)
+
+    expect(parsed).not.toBeNull()
+    expect(parsed?.type).toBe('raydium-amm-buy')
+    expect(parsed?.tokenFrom).toBe(WSOL_MINT)
+    expect(parsed?.tokenTo).toBe(tokenMint)
+    expect(parsed?.amountFrom).toBe(1_000_000_000n)
+    expect(parsed?.amountTo).toBe(50_000n)
+    expect(parsed?.signer).toBe(signer)
+  })
+
+  test('parses Raydium AMM swapBaseOut sell', () => {
+    const signer = 'User111111111111111111111111111111111111111'
+    const sourceAccount = 'SrcTknAcc1111111111111111111111111111111111'
+    const destAccount = 'DstTknAcc1111111111111111111111111111111111'
+    const accounts = new Array<string>(18).fill('x')
+    accounts[15] = sourceAccount
+    accounts[16] = destAccount
+    accounts[17] = signer
+    const tokenMint = 'Tkn1111111111111111111111111111111111111111'
+    // Data: [1 byte index=11][8 maxAmountIn][8 amountOut]
+    const data = encodeBase58(Uint8Array.from([11, ...u64le(75_000n), ...u64le(2_000_000_000n)]))
+    const allKeys = [...accounts.slice(0, 15), sourceAccount, destAccount, signer]
+    const ctx: ParseContext = {
+      allKeys,
+      preTokenBalances: [tokenBalance(15, tokenMint), tokenBalance(16, WSOL_MINT)],
+      postTokenBalances: [],
+    }
+
+    const parsed = tryParseInstruction(RAYDIUM_AMM_PROGRAM, accounts, data, ctx)
+
+    expect(parsed).not.toBeNull()
+    expect(parsed?.type).toBe('raydium-amm-sell')
+    expect(parsed?.tokenFrom).toBe(tokenMint)
+    expect(parsed?.tokenTo).toBe(WSOL_MINT)
+    expect(parsed?.amountFrom).toBe(75_000n)
+    expect(parsed?.amountTo).toBe(2_000_000_000n)
+    expect(parsed?.signer).toBe(signer)
+  })
+
+  test('parses Meteora DAMM swap buy', () => {
+    const SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const
+    const signer = 'Signer1111111111111111111111111111111111111'
+    const sourceAccount = 'SrcTknAcc1111111111111111111111111111111111'
+    const destAccount = 'DstTknAcc1111111111111111111111111111111111'
+    const tokenMint = 'Tkn1111111111111111111111111111111111111111'
+    const accounts = new Array<string>(13).fill('x')
+    accounts[1] = sourceAccount
+    accounts[2] = destAccount
+    accounts[12] = signer
+    const data = encodeIxData(SWAP_DISC, 500_000_000n, 100_000n)
+    const allKeys = ['pool', sourceAccount, destAccount, ...new Array<string>(9).fill('x'), signer]
+    const ctx: ParseContext = {
+      allKeys,
+      preTokenBalances: [tokenBalance(1, WSOL_MINT), tokenBalance(2, tokenMint)],
+      postTokenBalances: [],
+    }
+
+    const parsed = tryParseInstruction(METEORA_DAMM_PROGRAM, accounts, data, ctx)
+
+    expect(parsed).not.toBeNull()
+    expect(parsed?.type).toBe('meteora-damm-buy')
+    expect(parsed?.tokenFrom).toBe(WSOL_MINT)
+    expect(parsed?.tokenTo).toBe(tokenMint)
+    expect(parsed?.amountFrom).toBe(500_000_000n)
+    expect(parsed?.amountTo).toBe(100_000n)
+    expect(parsed?.signer).toBe(signer)
+  })
+
+  test('parses Meteora DAMM swap sell', () => {
+    const SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const
+    const signer = 'Signer1111111111111111111111111111111111111'
+    const sourceAccount = 'SrcTknAcc1111111111111111111111111111111111'
+    const destAccount = 'DstTknAcc1111111111111111111111111111111111'
+    const tokenMint = 'Tkn1111111111111111111111111111111111111111'
+    const accounts = new Array<string>(13).fill('x')
+    accounts[1] = sourceAccount
+    accounts[2] = destAccount
+    accounts[12] = signer
+    const data = encodeIxData(SWAP_DISC, 80_000n, 3_000_000_000n)
+    const allKeys = ['pool', sourceAccount, destAccount, ...new Array<string>(9).fill('x'), signer]
+    const ctx: ParseContext = {
+      allKeys,
+      preTokenBalances: [tokenBalance(1, tokenMint), tokenBalance(2, WSOL_MINT)],
+      postTokenBalances: [],
+    }
+
+    const parsed = tryParseInstruction(METEORA_DAMM_PROGRAM, accounts, data, ctx)
+
+    expect(parsed).not.toBeNull()
+    expect(parsed?.type).toBe('meteora-damm-sell')
+    expect(parsed?.tokenFrom).toBe(tokenMint)
+    expect(parsed?.tokenTo).toBe(WSOL_MINT)
+    expect(parsed?.amountFrom).toBe(80_000n)
+    expect(parsed?.amountTo).toBe(3_000_000_000n)
     expect(parsed?.signer).toBe(signer)
   })
 

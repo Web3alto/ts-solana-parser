@@ -1,7 +1,7 @@
 {
   "name": "solana-swap-parser",
-  "version": "0.7.0",
-  "description": "Zero-dependency Solana swap parser for 8 DEX protocols. Pass in a transaction, get back parsed swap data.",
+  "version": "0.8.0",
+  "description": "Zero-dependency Solana swap parser for 10 DEX protocols. Pass in a transaction, get back parsed swap data.",
   "module": "src/lib.ts",
   "types": "src/lib.ts",
   "type": "module",

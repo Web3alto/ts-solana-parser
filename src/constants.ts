@@ -7,6 +7,8 @@ export enum Protocol {
   MeteoraDBC = 'MeteoraDBC',
   MeteoraDAMMv2 = 'MeteoraDAMMv2',
   MeteoraDLMM = 'MeteoraDLMM',
+  RaydiumAMM = 'RaydiumAMM',
+  MeteoraDAMM = 'MeteoraDAMM',
 }
 
 export const PROGRAM_ID_TO_PROTOCOL = {
@@ -18,6 +20,8 @@ export const PROGRAM_ID_TO_PROTOCOL = {
   dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN: Protocol.MeteoraDBC,
   cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG: Protocol.MeteoraDAMMv2,
   LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo: Protocol.MeteoraDLMM,
+  '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8': Protocol.RaydiumAMM,
+  Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB: Protocol.MeteoraDAMM,
 } as const satisfies Record<string, Protocol>
 
 export const ALL_PROGRAM_IDS = Object.keys(PROGRAM_ID_TO_PROTOCOL)
@@ -46,4 +50,6 @@ export const POOL_ACCOUNT_INDEX = {
   [Protocol.MeteoraDBC]: 0, // pool (idx 3 = inputToken, idx 9 = payer)
   [Protocol.MeteoraDAMMv2]: 0, // pool (idx 2 = inputToken, idx 8 = payer)
   [Protocol.MeteoraDLMM]: 0, // lb_pair (idx 4 = userTokenIn, idx 10 = payer)
+  [Protocol.RaydiumAMM]: 1, // amm (idx 15 = sourceToken, idx 17 = payer)
+  [Protocol.MeteoraDAMM]: 0, // pool (idx 1 = sourceToken, idx 12 = payer)
 } as const satisfies Partial<Record<Protocol, number>>

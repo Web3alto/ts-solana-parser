@@ -46,4 +46,6 @@ export const PROTOCOL_DIRS: Record<Protocol, string> = {
   [Protocol.MeteoraDBC]: 'meteora-dbc',
   [Protocol.MeteoraDAMMv2]: 'meteora-dammv2',
   [Protocol.MeteoraDLMM]: 'meteora-dlmm',
+  [Protocol.RaydiumAMM]: 'raydium-amm',
+  [Protocol.MeteoraDAMM]: 'meteora-damm',
 }

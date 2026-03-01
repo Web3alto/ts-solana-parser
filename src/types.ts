@@ -131,6 +131,10 @@ export type SwapType =
   | 'meteora-dammv2-sell'
   | 'meteora-dlmm-buy'
   | 'meteora-dlmm-sell'
+  | 'raydium-amm-buy'
+  | 'raydium-amm-sell'
+  | 'meteora-damm-buy'
+  | 'meteora-damm-sell'
 
 // ── Parser output ──
 
