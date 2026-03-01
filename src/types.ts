@@ -129,6 +129,8 @@ export type SwapType =
   | 'meteora-dbc-sell'
   | 'meteora-dammv2-buy'
   | 'meteora-dammv2-sell'
+  | 'meteora-dlmm-buy'
+  | 'meteora-dlmm-sell'
 
 // ── Parser output ──
 

@@ -12,6 +12,7 @@ const RAYDIUM_CLMM_PROGRAM = 'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK'
 const RAYDIUM_LAUNCHLAB_PROGRAM = 'LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj'
 const METEORA_DBC_PROGRAM = 'dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN'
 const METEORA_DAMMV2_PROGRAM = 'cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG'
+const METEORA_DLMM_PROGRAM = 'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'
 
 describe('IDL registry', () => {
   test('parses PumpFun buy', () => {
@@ -443,6 +444,143 @@ describe('IDL registry', () => {
     expect(parsed?.tokenTo).toBe(tokenMint)
     expect(parsed?.amountFrom).toBe(1_500_000_000n)
     expect(parsed?.amountTo).toBe(75_000n)
+    expect(parsed?.signer).toBe(signer)
+  })
+
+  test('parses Meteora DLMM swap buy', () => {
+    const SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const
+    const mintX = 'MintX11111111111111111111111111111111111111'
+    const signer = 'Signer1111111111111111111111111111111111111'
+    const accounts = new Array<string>(15).fill('x')
+    accounts[4] = 'InputAccount1111111111111111111111111111111'
+    accounts[6] = mintX
+    accounts[7] = WSOL_MINT
+    accounts[10] = signer
+    const data = encodeIxData(SWAP_DISC, 500_000_000n, 100_000n)
+    const ctx: ParseContext = {
+      allKeys: accounts,
+      preTokenBalances: [tokenBalance(4, WSOL_MINT)],
+      postTokenBalances: [],
+    }
+
+    const parsed = tryParseInstruction(METEORA_DLMM_PROGRAM, accounts, data, ctx)
+
+    expect(parsed).not.toBeNull()
+    expect(parsed?.type).toBe('meteora-dlmm-buy')
+    expect(parsed?.tokenFrom).toBe(WSOL_MINT)
+    expect(parsed?.tokenTo).toBe(mintX)
+    expect(parsed?.amountFrom).toBe(500_000_000n)
+    expect(parsed?.amountTo).toBe(100_000n)
+    expect(parsed?.signer).toBe(signer)
+  })
+
+  test('parses Meteora DLMM swap sell', () => {
+    const SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const
+    const mintX = 'MintX11111111111111111111111111111111111111'
+    const signer = 'Signer1111111111111111111111111111111111111'
+    const accounts = new Array<string>(15).fill('x')
+    accounts[4] = 'InputAccount1111111111111111111111111111111'
+    accounts[6] = mintX
+    accounts[7] = WSOL_MINT
+    accounts[10] = signer
+    const data = encodeIxData(SWAP_DISC, 75_000n, 2_000_000_000n)
+    const ctx: ParseContext = {
+      allKeys: accounts,
+      preTokenBalances: [tokenBalance(4, mintX)],
+      postTokenBalances: [],
+    }
+
+    const parsed = tryParseInstruction(METEORA_DLMM_PROGRAM, accounts, data, ctx)
+
+    expect(parsed).not.toBeNull()
+    expect(parsed?.type).toBe('meteora-dlmm-sell')
+    expect(parsed?.tokenFrom).toBe(mintX)
+    expect(parsed?.tokenTo).toBe(WSOL_MINT)
+    expect(parsed?.amountFrom).toBe(75_000n)
+    expect(parsed?.amountTo).toBe(2_000_000_000n)
+    expect(parsed?.signer).toBe(signer)
+  })
+
+  test('parses Meteora DLMM swap_exact_out', () => {
+    const SWAP_EXACT_OUT_DISC = [250, 73, 101, 33, 38, 207, 75, 184] as const
+    const mintX = 'MintX11111111111111111111111111111111111111'
+    const signer = 'Signer1111111111111111111111111111111111111'
+    const accounts = new Array<string>(15).fill('x')
+    accounts[4] = 'InputAccount1111111111111111111111111111111'
+    accounts[6] = mintX
+    accounts[7] = WSOL_MINT
+    accounts[10] = signer
+    const data = encodeIxData(SWAP_EXACT_OUT_DISC, 3_000_000_000n, 50_000n)
+    const ctx: ParseContext = {
+      allKeys: accounts,
+      preTokenBalances: [tokenBalance(4, WSOL_MINT)],
+      postTokenBalances: [],
+    }
+
+    const parsed = tryParseInstruction(METEORA_DLMM_PROGRAM, accounts, data, ctx)
+
+    expect(parsed).not.toBeNull()
+    expect(parsed?.type).toBe('meteora-dlmm-buy')
+    expect(parsed?.tokenFrom).toBe(WSOL_MINT)
+    expect(parsed?.tokenTo).toBe(mintX)
+    expect(parsed?.amountFrom).toBe(3_000_000_000n)
+    expect(parsed?.amountTo).toBe(50_000n)
+    expect(parsed?.signer).toBe(signer)
+  })
+
+  test('parses Meteora DLMM swap_with_price_impact', () => {
+    const SWAP_WITH_PRICE_IMPACT_DISC = [56, 173, 230, 208, 173, 228, 156, 205] as const
+    const mintX = 'MintX11111111111111111111111111111111111111'
+    const signer = 'Signer1111111111111111111111111111111111111'
+    const accounts = new Array<string>(15).fill('x')
+    accounts[4] = 'InputAccount1111111111111111111111111111111'
+    accounts[6] = mintX
+    accounts[7] = WSOL_MINT
+    accounts[10] = signer
+    // [8 disc][8 amount_in][1 option tag (None)][2 max_price_impact_bps]
+    const data = encodeBase58(Uint8Array.from([...SWAP_WITH_PRICE_IMPACT_DISC, ...u64le(1_000_000_000n), 0, 0, 50]))
+    const ctx: ParseContext = {
+      allKeys: accounts,
+      preTokenBalances: [tokenBalance(4, WSOL_MINT)],
+      postTokenBalances: [],
+    }
+
+    const parsed = tryParseInstruction(METEORA_DLMM_PROGRAM, accounts, data, ctx)
+
+    expect(parsed).not.toBeNull()
+    expect(parsed?.type).toBe('meteora-dlmm-buy')
+    expect(parsed?.tokenFrom).toBe(WSOL_MINT)
+    expect(parsed?.tokenTo).toBe(mintX)
+    expect(parsed?.amountFrom).toBe(1_000_000_000n)
+    expect(parsed?.amountTo).toBe(0n)
+    expect(parsed?.signer).toBe(signer)
+  })
+
+  test('parses Meteora DLMM swap2 with ephemeral WSOL account', () => {
+    const SWAP2_DISC = [65, 75, 63, 76, 235, 91, 91, 136] as const
+    const mintX = 'MintX11111111111111111111111111111111111111'
+    const signer = 'Signer1111111111111111111111111111111111111'
+    const accounts = new Array<string>(16).fill('x')
+    accounts[4] = 'EphemeralWsol111111111111111111111111111111'
+    accounts[6] = mintX
+    accounts[7] = WSOL_MINT
+    accounts[10] = signer
+    const data = encodeIxData(SWAP2_DISC, 2_000_000_000n, 88_000n)
+    // No balance entry for ephemeral account — fallback to WSOL detection
+    const ctx: ParseContext = {
+      allKeys: accounts,
+      preTokenBalances: [],
+      postTokenBalances: [],
+    }
+
+    const parsed = tryParseInstruction(METEORA_DLMM_PROGRAM, accounts, data, ctx)
+
+    expect(parsed).not.toBeNull()
+    expect(parsed?.type).toBe('meteora-dlmm-buy')
+    expect(parsed?.tokenFrom).toBe(WSOL_MINT)
+    expect(parsed?.tokenTo).toBe(mintX)
+    expect(parsed?.amountFrom).toBe(2_000_000_000n)
+    expect(parsed?.amountTo).toBe(88_000n)
     expect(parsed?.signer).toBe(signer)
   })
 

@@ -22,6 +22,7 @@ const TOKEN_ADDRESSES: Record<Protocol, string> = {
   [Protocol.RaydiumLaunchLab]: '288am5VTRa5HUrQdJksHMLxWzFVXxwBU4mDCbvDQFWTF',
   [Protocol.MeteoraDBC]: 'BdGuUUxfp74PnyEYAFnEBFrsHVdDh5PTRHgqqbHKmoon',
   [Protocol.MeteoraDAMMv2]: 'BANKJmvhT8tiJRsBSS1n2HryMBPvT5Ze4HU95DUAmeta',
+  [Protocol.MeteoraDLMM]: 'So11111111111111111111111111111111111111112',
 }
 
 // CLI filtering: bun run test/scripts/validate-all.ts pumpswap raydium-cpmm

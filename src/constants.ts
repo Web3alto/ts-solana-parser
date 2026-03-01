@@ -6,6 +6,7 @@ export enum Protocol {
   RaydiumCLMM = 'RaydiumCLMM',
   MeteoraDBC = 'MeteoraDBC',
   MeteoraDAMMv2 = 'MeteoraDAMMv2',
+  MeteoraDLMM = 'MeteoraDLMM',
 }
 
 export const PROGRAM_ID_TO_PROTOCOL = {
@@ -16,6 +17,7 @@ export const PROGRAM_ID_TO_PROTOCOL = {
   CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK: Protocol.RaydiumCLMM,
   dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN: Protocol.MeteoraDBC,
   cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG: Protocol.MeteoraDAMMv2,
+  LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo: Protocol.MeteoraDLMM,
 } as const satisfies Record<string, Protocol>
 
 export const ALL_PROGRAM_IDS = Object.keys(PROGRAM_ID_TO_PROTOCOL)
@@ -43,4 +45,5 @@ export const POOL_ACCOUNT_INDEX = {
   [Protocol.RaydiumLaunchLab]: 2, // poolState (idx 0 = payer, idx 1 = authority)
   [Protocol.MeteoraDBC]: 0, // pool (idx 3 = inputToken, idx 9 = payer)
   [Protocol.MeteoraDAMMv2]: 0, // pool (idx 2 = inputToken, idx 8 = payer)
+  [Protocol.MeteoraDLMM]: 0, // lb_pair (idx 4 = userTokenIn, idx 10 = payer)
 } as const satisfies Partial<Record<Protocol, number>>

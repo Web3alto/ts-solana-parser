@@ -1,6 +1,6 @@
 # solana-swap-parser
 
-Zero-dependency Solana DEX swap parser for Bun. Pass in a transaction, get back structured swap data. Supports 7 protocols out of the box.
+Zero-dependency Solana DEX swap parser for Bun. Pass in a transaction, get back structured swap data. Supports 8 protocols out of the box.
 
 ## Install
 
@@ -38,6 +38,7 @@ if (result) {
 | Raydium LaunchLab | `LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj` | `raydium-launchlab.ts` |
 | Meteora DBC | `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` | `meteora-dbc.ts` |
 | Meteora DAMMv2 | `cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG` | `meteora-dammv2.ts` |
+| Meteora DLMM | `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo` | `meteora-dlmm.ts` |
 
 ## API Reference
 

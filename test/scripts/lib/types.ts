@@ -45,4 +45,5 @@ export const PROTOCOL_DIRS: Record<Protocol, string> = {
   [Protocol.RaydiumLaunchLab]: 'raydium-launchlab',
   [Protocol.MeteoraDBC]: 'meteora-dbc',
   [Protocol.MeteoraDAMMv2]: 'meteora-dammv2',
+  [Protocol.MeteoraDLMM]: 'meteora-dlmm',
 }
