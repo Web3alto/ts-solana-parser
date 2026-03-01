@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "helius-transaction-parser",
+      "name": "ts-solana-parser",
       "dependencies": {
         "@solana-program/address-lookup-table": "^0.11.0",
         "@solana/kit": "^6.1.0",

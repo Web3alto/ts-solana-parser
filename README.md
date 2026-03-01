@@ -1,4 +1,4 @@
-# solana-swap-parser
+# ts-solana-parser
 
 Solana transaction parser with full instruction decoding, DEX swap detection, and MEV tip identification. Supports 10 DEX protocols, 12 MEV tip providers, and 6 instruction programs. Built on `@solana/kit`.
 
@@ -14,7 +14,7 @@ Solana transaction parser with full instruction decoding, DEX swap detection, an
 ## Install
 
 ```bash
-bun add solana-swap-parser
+bun add ts-solana-parser
 ```
 
 > **Note:** This package ships TypeScript source and requires a runtime or bundler that handles `.ts` imports (e.g., Bun).
@@ -22,7 +22,7 @@ bun add solana-swap-parser
 ## Quick Start
 
 ```ts
-import { parseSwap } from 'solana-swap-parser'
+import { parseSwap } from 'ts-solana-parser'
 
 const swap = parseSwap({
   transaction: txResult.transaction,
@@ -81,7 +81,7 @@ These functions validate input with Zod and throw `ValidationError` on malformed
 Parse a single transaction for a swap. Returns `null` if not a swap.
 
 ```ts
-import { parseSwap } from 'solana-swap-parser'
+import { parseSwap } from 'ts-solana-parser'
 
 const swap = parseSwap({
   transaction: txData,   // TransactionData or [encoded, encoding] tuple
@@ -127,7 +127,7 @@ Batch version returning detailed outcomes. Invalid items produce `kind: 'error'`
 Decode every instruction in a transaction, detect tips, and detect swaps:
 
 ```ts
-import { parseFullSwapTransaction } from 'solana-swap-parser'
+import { parseFullSwapTransaction } from 'ts-solana-parser'
 
 const result = parseFullSwapTransaction({
   transaction: txData,
@@ -157,7 +157,7 @@ if (result) {
 ### Options
 
 ```ts
-import { createRpcBackedParserOptions } from 'solana-swap-parser'
+import { createRpcBackedParserOptions } from 'ts-solana-parser'
 
 // Quick setup with RPC-backed address lookup table resolution
 const options = createRpcBackedParserOptions({
@@ -174,7 +174,7 @@ const options = createRpcBackedParserOptions({
 Or configure manually:
 
 ```ts
-import type { ParserOptions } from 'solana-swap-parser'
+import type { ParserOptions } from 'ts-solana-parser'
 
 const options: ParserOptions = {
   resolveAddressTableLookups: (lookups) => myCache.resolve(lookups),
@@ -196,7 +196,7 @@ import {
   TransactionResultSchema,
   TransactionMetaSchema,
   TokenBalanceSchema,
-} from 'solana-swap-parser'
+} from 'ts-solana-parser'
 ```
 
 ## Types
