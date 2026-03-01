@@ -41,6 +41,17 @@ function validateAndBuild(input: SwapInput): TransactionNotification {
   }
 }
 
+/** Non-throwing validation: returns notification on success, error message on failure. */
+function tryValidateAndBuild(input: SwapInput): TransactionNotification | string {
+  try {
+    return validateAndBuild(input)
+  } catch (err) {
+    if (err instanceof ValidationError) return err.message
+    if (err instanceof Error) return err.message
+    return 'Unknown validation error'
+  }
+}
+
 export function parseSwap(input: SwapInput, options?: ParserOptions): ParsedSwap | null {
   const notification = validateAndBuild(input)
   return parseTransaction(notification, options)
@@ -49,4 +60,54 @@ export function parseSwap(input: SwapInput, options?: ParserOptions): ParsedSwap
 export function parseSwapDetailed(input: SwapInput, options?: ParserOptions): ParseOutcome {
   const notification = validateAndBuild(input)
   return parseTransactionDetailed(notification, options)
+}
+
+export async function parseSwaps(
+  inputs: readonly SwapInput[],
+  options?: ParserOptions,
+): Promise<(ParsedSwap | null)[]> {
+  const outcomes = await parseSwapsDetailed(inputs, options)
+  return outcomes.map((o) => o.swap ?? null)
+}
+
+export async function parseSwapsDetailed(
+  inputs: readonly SwapInput[],
+  options?: ParserOptions,
+): Promise<ParseOutcome[]> {
+  if (inputs.length === 0) return []
+
+  // 1. Validate each input individually
+  const validated: (TransactionNotification | string)[] = inputs.map(tryValidateAndBuild)
+
+  // 2. Collect ALT table accounts from all valid JSON-parsed transactions
+  if (options?.warmAddressLookupTables) {
+    const altAccounts = new Set<string>()
+    for (const v of validated) {
+      if (typeof v === 'string') continue
+      const tx = v.transaction.transaction
+      // Only inspect TransactionData (not encoded tuples)
+      if (!Array.isArray(tx) && tx.message.addressTableLookups) {
+        for (const lookup of tx.message.addressTableLookups) {
+          altAccounts.add(lookup.accountKey)
+        }
+      }
+    }
+
+    // 3. Pre-warm ALTs
+    if (altAccounts.size > 0) {
+      try {
+        await options.warmAddressLookupTables([...altAccounts])
+      } catch (err) {
+        options.onResolverError?.({ error: err })
+      }
+    }
+  }
+
+  // 4. Parse each item
+  return validated.map((v) => {
+    if (typeof v === 'string') {
+      return { kind: 'error' as const, code: 'INTERNAL_ERROR' as const, warnings: [], errorMessage: v }
+    }
+    return parseTransactionDetailed(v, options)
+  })
 }

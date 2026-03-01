@@ -1,9 +1,9 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, mock, test } from 'bun:test'
 import { ValidationError } from '../src/errors.ts'
 import type { SwapInput } from '../src/parse-swap.ts'
-import { parseSwap, parseSwapDetailed } from '../src/parse-swap.ts'
+import { parseSwap, parseSwapDetailed, parseSwaps, parseSwapsDetailed } from '../src/parse-swap.ts'
 import { parseTransaction, parseTransactionDetailed } from '../src/parser.ts'
-import type { TokenBalance, TransactionNotification } from '../src/types.ts'
+import type { ParserOptions, TokenBalance, TransactionNotification } from '../src/types.ts'
 import { encodeIxData } from './helpers.ts'
 
 // ── Fixtures ──
@@ -312,5 +312,177 @@ describe('ValidationError', () => {
       expect(ve.message).toContain('Invalid input:')
       expect(ve.name).toBe('ValidationError')
     }
+  })
+})
+
+// ── Batch API ──
+
+const NON_SWAP_INPUT: SwapInput = {
+  transaction: {
+    message: {
+      accountKeys: ['11111111111111111111111111111111'],
+      instructions: [],
+      recentBlockhash: '11111111111111111111111111111111',
+    },
+    signatures: ['sig'],
+  },
+  meta: {
+    err: null,
+    fee: 5000,
+    preBalances: [1_000_000],
+    postBalances: [995_000],
+    preTokenBalances: [],
+    postTokenBalances: [],
+    innerInstructions: [],
+    loadedAddresses: null,
+  },
+}
+
+const INVALID_INPUT = { meta: { fee: 'not a number' } } as unknown as SwapInput
+
+describe('parseSwaps (batch)', () => {
+  test('returns index-correlated results for valid batch', async () => {
+    const n = buildPumpfunBuyNotification()
+    const inputs = [notificationToSwapInput(n), NON_SWAP_INPUT]
+    const results = await parseSwaps(inputs)
+
+    expect(results).toHaveLength(2)
+    expect(results[0]).not.toBeNull()
+    expect(results[0]!.signature).toBe('TestSig123')
+    expect(results[1]).toBeNull()
+  })
+
+  test('single invalid item does not abort batch', async () => {
+    const n = buildPumpfunBuyNotification()
+    const inputs = [INVALID_INPUT, notificationToSwapInput(n), INVALID_INPUT]
+    const results = await parseSwaps(inputs)
+
+    expect(results).toHaveLength(3)
+    expect(results[0]).toBeNull()
+    expect(results[1]).not.toBeNull()
+    expect(results[1]!.signature).toBe('TestSig123')
+    expect(results[2]).toBeNull()
+  })
+
+  test('empty array returns empty array', async () => {
+    const results = await parseSwaps([])
+    expect(results).toEqual([])
+  })
+
+  test('results match calling parseSwap individually', async () => {
+    const n = buildPumpfunBuyNotification()
+    const inputs = [notificationToSwapInput(n), NON_SWAP_INPUT]
+
+    const batchResults = await parseSwaps(inputs)
+    const individualResults = inputs.map((i) => parseSwap(i))
+
+    expect(batchResults).toEqual(individualResults)
+  })
+
+  test('pre-warms ALTs across all transactions', async () => {
+    const ALT_KEY_A = 'ALTKeyA1111111111111111111111111111111111111'
+    const ALT_KEY_B = 'ALTKeyB1111111111111111111111111111111111111'
+
+    const inputA: SwapInput = {
+      transaction: {
+        message: {
+          accountKeys: [USER],
+          instructions: [],
+          recentBlockhash: '11111111111111111111111111111111',
+          addressTableLookups: [{ accountKey: ALT_KEY_A, readonlyIndexes: [0], writableIndexes: [] }],
+        },
+        signatures: ['sigA'],
+      },
+      meta: {
+        err: null,
+        fee: 5000,
+        preBalances: [1_000_000],
+        postBalances: [995_000],
+        preTokenBalances: [],
+        postTokenBalances: [],
+        innerInstructions: [],
+        loadedAddresses: null,
+      },
+    }
+
+    const inputB: SwapInput = {
+      transaction: {
+        message: {
+          accountKeys: [USER],
+          instructions: [],
+          recentBlockhash: '11111111111111111111111111111111',
+          addressTableLookups: [{ accountKey: ALT_KEY_B, readonlyIndexes: [0], writableIndexes: [] }],
+        },
+        signatures: ['sigB'],
+      },
+      meta: {
+        err: null,
+        fee: 5000,
+        preBalances: [1_000_000],
+        postBalances: [995_000],
+        preTokenBalances: [],
+        postTokenBalances: [],
+        innerInstructions: [],
+        loadedAddresses: null,
+      },
+    }
+
+    const warmFn = mock(async (_accounts: string[]) => {})
+    const options: ParserOptions = { warmAddressLookupTables: warmFn }
+
+    await parseSwaps([inputA, inputB], options)
+
+    expect(warmFn).toHaveBeenCalledTimes(1)
+    const calledWith = warmFn.mock.calls[0]![0] as string[]
+    expect(calledWith).toContain(ALT_KEY_A)
+    expect(calledWith).toContain(ALT_KEY_B)
+  })
+})
+
+describe('parseSwapsDetailed (batch)', () => {
+  test('returns ParseOutcome per item', async () => {
+    const n = buildPumpfunBuyNotification()
+    const inputs = [notificationToSwapInput(n), NON_SWAP_INPUT]
+    const outcomes = await parseSwapsDetailed(inputs)
+
+    expect(outcomes).toHaveLength(2)
+    expect(outcomes[0]!.kind).toBe('swap')
+    expect(outcomes[0]!.swap).toBeDefined()
+    expect(outcomes[1]!.kind).toBe('not_swap')
+  })
+
+  test('validation errors produce kind:error outcomes with errorMessage', async () => {
+    const outcomes = await parseSwapsDetailed([INVALID_INPUT])
+
+    expect(outcomes).toHaveLength(1)
+    expect(outcomes[0]!.kind).toBe('error')
+    expect(outcomes[0]!.code).toBe('INTERNAL_ERROR')
+    expect(outcomes[0]!.errorMessage).toBeDefined()
+    expect(outcomes[0]!.errorMessage!.length).toBeGreaterThan(0)
+  })
+
+  test('warmAddressLookupTables failure does not abort batch', async () => {
+    const n = buildPumpfunBuyNotification()
+    const input = notificationToSwapInput(n)
+    // Add an ALT lookup so the warm path is triggered
+    const txData = input.transaction as { message: { addressTableLookups?: unknown[] } }
+    txData.message.addressTableLookups = [
+      { accountKey: 'SomeALT11111111111111111111111111111111111', readonlyIndexes: [0], writableIndexes: [] },
+    ]
+
+    const errorFn = mock((_ctx: { error: unknown }) => {})
+    const options: ParserOptions = {
+      warmAddressLookupTables: async () => {
+        throw new Error('RPC down')
+      },
+      onResolverError: errorFn,
+    }
+
+    const outcomes = await parseSwapsDetailed([input], options)
+
+    expect(outcomes).toHaveLength(1)
+    // Parsing still proceeds (may fail for other reasons, but not aborted by ALT error)
+    expect(outcomes[0]!.kind).not.toBe('error')
+    expect(errorFn).toHaveBeenCalledTimes(1)
   })
 })

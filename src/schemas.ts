@@ -46,3 +46,5 @@ export const SwapInputSchema = z.object({
   slot: z.number().int().nonnegative().optional(),
   blockTime: z.number().nullish(),
 })
+
+export const SwapInputArraySchema = z.array(SwapInputSchema)
