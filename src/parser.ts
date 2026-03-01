@@ -26,7 +26,9 @@ import {
   selectBestIdlCandidate,
 } from './parser/idl-scoring.ts'
 import { buildSignerSet, findSwapUser } from './parser/user.ts'
+import { detectTipsFromRawInstructions } from './tips.ts'
 import type {
+  MevTip,
   ParseCode,
   ParsedSwap,
   ParseOutcome,
@@ -69,7 +71,7 @@ export function parseTransactionDetailed(
   notification: TransactionNotification,
   options?: ParserOptions,
   /** @internal Pre-computed normalization to skip redundant work (used by parseFullTransaction) */
-  _prepared?: { message: TransactionMessage; meta: NormalizedTransactionMeta; fullKeys: string[] },
+  _prepared?: { message: TransactionMessage; meta: NormalizedTransactionMeta; fullKeys: string[]; tips?: readonly MevTip[] | undefined },
 ): ParseOutcome {
   const warnings: WarningCode[] = []
 
@@ -177,6 +179,7 @@ export function parseTransactionDetailed(
     for (const w of selectedPair.warnings) warnings.push(w)
 
     const pool = extractPoolAddress(allInstructions, fullKeys, protocols)
+    const tips = _prepared?.tips ?? detectTipsFromRawInstructions(allInstructions, fullKeys)
 
     const inputRaw = -input.rawDelta
     const outputRaw = output.rawDelta
@@ -242,6 +245,7 @@ export function parseTransactionDetailed(
       outputToken2022TransferFeeBps:
         tokenProgramInfo.outputTokenProgram === 'token-2022' ? tokenProgramInfo.token2022TransferFeeBps : null,
       token2022TransferFeeBps: tokenProgramInfo.token2022TransferFeeBps,
+      tips,
       pool,
       swapType,
       confidence: selectedIdl?.confidence ?? 'medium',
@@ -271,7 +275,8 @@ export function _parseTransactionWithPrepared(
   fullKeys: string[],
   notification: TransactionNotification,
   options?: ParserOptions,
+  tips?: readonly MevTip[] | undefined,
 ): ParsedSwap | null {
-  const outcome = parseTransactionDetailed(notification, options, { message, meta, fullKeys })
+  const outcome = parseTransactionDetailed(notification, options, { message, meta, fullKeys, tips })
   return outcome.swap ?? null
 }

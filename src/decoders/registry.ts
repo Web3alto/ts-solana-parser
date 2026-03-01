@@ -1,4 +1,4 @@
-import { POOL_ACCOUNT_INDEX, PROGRAM_ID_TO_PROTOCOL } from '../constants.ts'
+import { POOL_ACCOUNT_INDEX, PROGRAM_ID_TO_PROTOCOL, SYSTEM_PROGRAM_ID } from '../constants.ts'
 import { decodeBase58 } from '../idl/codec.ts'
 import { tryParseInstruction } from '../idl/registry.ts'
 import type { ParseContext } from '../idl/types.ts'
@@ -9,7 +9,6 @@ import { decodeSystemInstruction } from './system.ts'
 import { decodeTokenInstruction } from './token.ts'
 
 // Well-known program IDs
-const SYSTEM_PROGRAM_ID = '11111111111111111111111111111111'
 const TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
 const TOKEN_2022_PROGRAM_ID = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'
 const COMPUTE_BUDGET_PROGRAM_ID = 'ComputeBudget111111111111111111111111111111'

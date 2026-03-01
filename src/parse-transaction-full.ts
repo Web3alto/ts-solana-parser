@@ -10,6 +10,7 @@ import {
   normalizeMetaWithLookups,
 } from './parser/accounts.ts'
 import { _parseTransactionWithPrepared } from './parser.ts'
+import { detectTips } from './tips.ts'
 import type {
   CompiledInstruction,
   Instruction,
@@ -72,8 +73,11 @@ export function parseFullTransaction(
     })
   }
 
-  // 4. Optionally detect swap
-  const swap = _parseTransactionWithPrepared(message, meta, fullKeys, notification, options) ?? undefined
+  // 4. Detect MEV tips
+  const tips = detectTips(entries)
+
+  // 5. Optionally detect swap (pass pre-computed tips to avoid redundant detection)
+  const swap = _parseTransactionWithPrepared(message, meta, fullKeys, notification, options, tips) ?? undefined
 
   const { logMessages, computeUnitsConsumed } = notification.transaction.meta
 
@@ -88,6 +92,7 @@ export function parseFullTransaction(
     computeUnitsConsumed: computeUnitsConsumed ?? undefined,
     logMessages: logMessages ?? undefined,
     instructions: entries,
+    tips,
     swap,
   }
 }
