@@ -1,5 +1,8 @@
 // Public API — barrel exports
 
+// Aggregator detection
+export type { Aggregator } from './aggregators/constants.ts'
+export { AGGREGATOR_PROGRAM_IDS } from './aggregators/constants.ts'
 // Constants
 export {
   lookupTipProvider,
@@ -16,6 +19,7 @@ export {
 export { DecodeError, ParserError, UnsupportedEncodingError, ValidationError } from './errors.ts'
 // Instruction types (full transaction parsing)
 export type {
+  AggregatorInstruction,
   ATAInstruction,
   ComputeBudgetInstruction,
   DecodedInstruction,
@@ -28,7 +32,10 @@ export type {
   UnknownInstruction,
 } from './instruction-types.ts'
 // Runtime introspection
-export { getSupportedProtocols, getSupportedTipProviders } from './introspection.ts'
+export { getSupportedAggregators, getSupportedProtocols, getSupportedTipProviders } from './introspection.ts'
+// Token metadata
+export type { EnrichedSwap, MetadataResolverConfig, TokenMetadata } from './metadata/index.ts'
+export { enrichSwapWithMetadata, TokenMetadataResolver } from './metadata/index.ts'
 // Normalization
 export { normalizeTransactionData } from './normalize.ts'
 export type { SwapInput } from './parse-swap.ts'

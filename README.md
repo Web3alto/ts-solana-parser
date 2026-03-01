@@ -1,10 +1,12 @@
 # ts-solana-parser
 
-Solana transaction parser with full instruction decoding, DEX swap detection, and MEV tip identification. Supports 11 DEX protocols, 12 MEV tip providers, and 6 instruction programs. Built on `@solana/kit`.
+Solana transaction parser with full instruction decoding, DEX swap detection, aggregator routing, and token metadata resolution. Supports 11 DEX protocols, Jupiter aggregator detection, 12 MEV tip providers, and 6 instruction programs. Built on `@solana/kit`.
 
 ## Features
 
 - **Swap detection** across 11 DEX protocols with IDL-based instruction decoding
+- **Aggregator detection** — identifies Jupiter-routed swaps with `routedVia` tagging
+- **Token metadata** — resolve symbol, name, decimals, and URI via Metaplex or Token-2022 extensions
 - **Full transaction decoding** for System, Token, Token-2022, Compute Budget, ATA, and Memo programs
 - **MEV tip detection** across 12 providers (108 known tip addresses)
 - **Batch processing** with address lookup table pre-warming
@@ -60,6 +62,29 @@ if (swap) {
 | Meteora | DBC | `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` |
 | Meteora | DLMM | `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo` |
 | Orca | Whirlpool | `whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc` |
+
+## Aggregator Detection
+
+Aggregators like Jupiter wrap DEX swaps as inner instructions (CPIs). The parser detects when a swap is routed through an aggregator and tags it on `ParsedSwap`:
+
+```ts
+if (swap?.routedVia) {
+  console.log(swap.routedVia) // "jupiter"
+}
+```
+
+| Aggregator | Program ID |
+|------------|------------|
+| Jupiter | `JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4` |
+
+In full transaction decoding, Jupiter instructions decode with `program: 'aggregator'`:
+
+```ts
+case 'aggregator':
+  console.log(entry.instruction.aggregator) // "jupiter"
+  console.log(entry.instruction.variant)    // "route" | "shared_accounts_route" | ...
+  console.log(entry.instruction.signer)     // swap initiator
+```
 
 ## MEV Tip Detection
 
@@ -153,6 +178,7 @@ if (result) {
       case 'associated-token-account': // create, createIdempotent
       case 'memo':         // memo message
       case 'dex':          // DEX swap (11 protocols)
+      case 'aggregator':   // aggregator routing (Jupiter)
       case 'unknown':      // unrecognized program
     }
   }
@@ -207,20 +233,52 @@ import {
 } from 'ts-solana-parser'
 ```
 
+### Token Metadata
+
+Resolve token symbol, name, decimals, and URI for any mint. Supports both Metaplex Token Metadata and Token-2022 metadata extensions.
+
+```ts
+import { TokenMetadataResolver, enrichSwapWithMetadata } from 'ts-solana-parser'
+
+const resolver = new TokenMetadataResolver({
+  rpcUrl: process.env.RPC_URL!,
+  cacheTtlMs: 300_000,      // default: 5 min
+  maxCacheEntries: 10_000,  // default: 10,000
+  commitment: 'confirmed',  // default: "confirmed"
+  retries: 2,               // default: 2
+})
+
+// Resolve metadata for a single mint
+const meta = await resolver.resolve('So11111111111111111111111111111111111111112')
+if (meta) {
+  console.log(meta.symbol)   // "SOL"
+  console.log(meta.name)     // "Wrapped SOL"
+  console.log(meta.decimals) // 9
+}
+
+// Enrich a ParsedSwap with token metadata
+const enriched = await enrichSwapWithMetadata(swap, resolver)
+console.log(enriched.inputTokenMetadata?.symbol)
+console.log(enriched.outputTokenMetadata?.symbol)
+```
+
 ### Utilities & Introspection
 
 ```ts
 import {
+  getSupportedAggregators,
   getSupportedProtocols,
   getSupportedTipProviders,
   normalizeTransactionData,
   detectTipsFromRawInstructions,
   lookupTipProvider,
+  AGGREGATOR_PROGRAM_IDS,
   PROGRAM_ID_TO_PROTOCOL,
   TIP_ADDRESS_TO_PROVIDER,
 } from 'ts-solana-parser'
 
 getSupportedProtocols()       // all detectable DEX protocols
+getSupportedAggregators()     // all detectable aggregators (e.g. "jupiter")
 getSupportedTipProviders()    // all identifiable tip providers
 normalizeTransactionData(raw) // normalize raw RPC data for custom pipelines
 detectTipsFromRawInstructions(instructions, accounts) // standalone tip detection
@@ -228,6 +286,7 @@ lookupTipProvider(address)    // check if an address is a known tip recipient
 
 // Constants
 PROGRAM_ID_TO_PROTOCOL        // Map of program IDs → Protocol enum
+AGGREGATOR_PROGRAM_IDS        // Map of aggregator program IDs → names
 TIP_ADDRESS_TO_PROVIDER       // Map of 108 tip addresses → provider names
 ```
 
@@ -245,6 +304,7 @@ interface ParsedSwap {
   protocols: Protocol[]
   hopCount?: number
   routeType?: 'single-hop' | 'multi-hop'
+  routedVia?: string               // "jupiter" when routed through an aggregator
   inputMint: string
   inputRaw: string             // exact amount in base units
   inputDecimals: number
