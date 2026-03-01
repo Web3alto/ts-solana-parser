@@ -1,24 +1,13 @@
 import { getAddressLookupTableDecoder } from '@solana-program/address-lookup-table'
 import { z } from 'zod'
 import { decodeBase64 } from './idl/codec.ts'
+import type { AccountInfoResult } from './rpc.ts'
+import { retryWithBackoff, rpcCall } from './rpc.ts'
 import { validateWithZod } from './schemas.ts'
 import type { AddressLookupResolution, AddressTableLookup, ParserOptions } from './types.ts'
-import { sleep } from './util.ts'
 
 const ADDRESS_LOOKUP_TABLE_PROGRAM = 'AddressLookupTab1e1111111111111111111111111'
 const altDecoder = getAddressLookupTableDecoder()
-
-interface RpcResponse<T> {
-  result: T
-  error?: { code: number; message: string }
-}
-
-interface AccountInfoResult {
-  value: {
-    owner: string
-    data: [string, string] | string
-  } | null
-}
 
 interface AddressLookupCacheEntry {
   fetchedAt: number
@@ -98,69 +87,35 @@ class RpcAddressLookupResolver {
     }
   }
 
-  private async rpcCall<T>(method: string, params: unknown[]): Promise<T> {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs)
+  private async fetchLookupTableOnce(tableAccount: string): Promise<AddressLookupCacheEntry> {
+    const result = await rpcCall<AccountInfoResult>(
+      this.fetcher,
+      this.rpcUrl,
+      this.requestTimeoutMs,
+      'getAccountInfo',
+      [tableAccount, { encoding: 'base64', commitment: this.commitment }],
+    )
 
-    try {
-      const res = await this.fetcher(this.rpcUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
-        signal: controller.signal,
-      })
-
-      if (!res.ok) {
-        throw new Error(`HTTP error ${res.status}`)
-      }
-
-      const json = (await res.json()) as RpcResponse<T>
-      if (json.error) {
-        throw new Error(`RPC error (${json.error.code}): ${json.error.message}`)
-      }
-      return json.result
-    } finally {
-      clearTimeout(timeout)
+    if (!result.value) {
+      return { fetchedAt: Date.now(), addresses: [] }
     }
+
+    if (result.value.owner !== ADDRESS_LOOKUP_TABLE_PROGRAM) {
+      throw new Error(`ALT owner mismatch: ${result.value.owner}`)
+    }
+
+    const rawData = result.value.data
+    if (!Array.isArray(rawData) || rawData[1] !== 'base64') {
+      throw new Error('Invalid ALT account encoding')
+    }
+
+    const bytes = decodeBase64(rawData[0])
+    const addresses = parseLookupTableAddresses(bytes)
+    return { fetchedAt: Date.now(), addresses }
   }
 
-  private async fetchLookupTable(tableAccount: string): Promise<AddressLookupCacheEntry> {
-    let attempt = 0
-    let lastError: unknown = null
-
-    while (attempt <= this.retries) {
-      try {
-        const result = await this.rpcCall<AccountInfoResult>('getAccountInfo', [
-          tableAccount,
-          { encoding: 'base64', commitment: this.commitment },
-        ])
-
-        if (!result.value) {
-          return { fetchedAt: Date.now(), addresses: [] }
-        }
-
-        if (result.value.owner !== ADDRESS_LOOKUP_TABLE_PROGRAM) {
-          throw new Error(`ALT owner mismatch: ${result.value.owner}`)
-        }
-
-        const rawData = result.value.data
-        if (!Array.isArray(rawData) || rawData[1] !== 'base64') {
-          throw new Error('Invalid ALT account encoding')
-        }
-
-        const bytes = decodeBase64(rawData[0])
-        const addresses = parseLookupTableAddresses(bytes)
-        return { fetchedAt: Date.now(), addresses }
-      } catch (error) {
-        lastError = error
-        if (attempt >= this.retries) break
-        const backoffMs = Math.round(this.retryBaseMs * 2 ** attempt * (0.8 + Math.random() * 0.4))
-        await sleep(backoffMs)
-      }
-      attempt++
-    }
-
-    throw lastError
+  private fetchLookupTable(tableAccount: string): Promise<AddressLookupCacheEntry> {
+    return retryWithBackoff(() => this.fetchLookupTableOnce(tableAccount), this.retries, this.retryBaseMs)
   }
 
   private queueLookupFetch(tableAccount: string): Promise<AddressLookupCacheEntry> {
