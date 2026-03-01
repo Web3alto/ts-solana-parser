@@ -13,23 +13,25 @@ export function normalizeMint(mint: string): string {
   return mint === WSOL_MINT ? SOL_MINT : mint
 }
 
-function getOrCreate<K, V>(map: Map<K, V>, key: K, create: () => V): V {
-  const existing = map.get(key)
-  if (existing !== undefined) return existing
-  const next = create()
-  map.set(key, next)
-  return next
+function getOrCreateMap<V>(map: Map<string, Map<string, V>>, key: string): Map<string, V> {
+  let inner = map.get(key)
+  if (inner) return inner
+  inner = new Map()
+  map.set(key, inner)
+  return inner
+}
+
+const DIGITS_ONLY = /^[0-9]+$/
+
+function parseRawAmount(raw: string): bigint | null {
+  if (!DIGITS_ONLY.test(raw)) return null
+  return BigInt(raw)
 }
 
 export function buildOwnerTokenState(meta: NormalizedTransactionMeta): OwnerTokenState {
   const deltasByOwner = new Map<string, Map<string, bigint>>()
   const decimalsByOwner = new Map<string, Map<string, number>>()
   let malformedBalanceEntries = 0
-
-  function parseRawAmount(raw: string): bigint | null {
-    if (!/^[0-9]+$/.test(raw)) return null
-    return BigInt(raw)
-  }
 
   for (const tb of meta.preTokenBalances) {
     const owner = tb.owner
@@ -38,10 +40,10 @@ export function buildOwnerTokenState(meta: NormalizedTransactionMeta): OwnerToke
       malformedBalanceEntries++
       continue
     }
-    const ownerDeltas = getOrCreate(deltasByOwner, owner, () => new Map())
+    const ownerDeltas = getOrCreateMap(deltasByOwner, owner)
     ownerDeltas.set(tb.mint, (ownerDeltas.get(tb.mint) ?? 0n) - parsedAmount)
 
-    const ownerDecimals = getOrCreate(decimalsByOwner, owner, () => new Map())
+    const ownerDecimals = getOrCreateMap(decimalsByOwner, owner)
     ownerDecimals.set(tb.mint, tb.uiTokenAmount.decimals)
   }
 
@@ -52,10 +54,10 @@ export function buildOwnerTokenState(meta: NormalizedTransactionMeta): OwnerToke
       malformedBalanceEntries++
       continue
     }
-    const ownerDeltas = getOrCreate(deltasByOwner, owner, () => new Map())
+    const ownerDeltas = getOrCreateMap(deltasByOwner, owner)
     ownerDeltas.set(tb.mint, (ownerDeltas.get(tb.mint) ?? 0n) + parsedAmount)
 
-    const ownerDecimals = getOrCreate(decimalsByOwner, owner, () => new Map())
+    const ownerDecimals = getOrCreateMap(decimalsByOwner, owner)
     ownerDecimals.set(tb.mint, tb.uiTokenAmount.decimals)
   }
 

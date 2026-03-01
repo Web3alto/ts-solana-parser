@@ -45,7 +45,10 @@ export function detectTips(entries: readonly DecodedInstructionEntry[]): MevTip[
  * Detect MEV tips from raw instructions (compiled or unparsed).
  * Used by the swap-only parser path (`parseTransactionDetailed`).
  */
-export function detectTipsFromRawInstructions(allInstructions: Instruction[], fullKeys: string[]): MevTip[] | undefined {
+export function detectTipsFromRawInstructions(
+  allInstructions: Instruction[],
+  fullKeys: string[],
+): MevTip[] | undefined {
   let tips: MevTip[] | undefined
 
   for (const instr of allInstructions) {

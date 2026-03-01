@@ -16,7 +16,10 @@ function makeTransferSolData(lamports: bigint): string {
   return encodeBase58(buf)
 }
 
-function makeDecodedEntry(instruction: DecodedInstruction, innerInstructions: DecodedInstruction[] = []): DecodedInstructionEntry {
+function makeDecodedEntry(
+  instruction: DecodedInstruction,
+  innerInstructions: DecodedInstruction[] = [],
+): DecodedInstructionEntry {
   return { index: 0, instruction, innerInstructions }
 }
 
@@ -49,30 +52,23 @@ describe('detectTips', () => {
       }),
     ]
     const tips = detectTips(entries)
-    expect(tips).toEqual([
-      { provider: TipProvider.Jito, lamports: 100_000n, recipient: JITO_ADDR },
-    ])
+    expect(tips).toEqual([{ provider: TipProvider.Jito, lamports: 100_000n, recipient: JITO_ADDR }])
   })
 
   it('detects tips from inner instructions', () => {
     const entries: DecodedInstructionEntry[] = [
-      makeDecodedEntry(
-        { program: 'compute-budget', type: 'setComputeUnitLimit', units: 200_000 },
-        [
-          {
-            program: 'system',
-            type: 'transferSol',
-            source: 'sender111',
-            destination: TEMPORAL_ADDR,
-            lamports: 50_000n,
-          },
-        ],
-      ),
+      makeDecodedEntry({ program: 'compute-budget', type: 'setComputeUnitLimit', units: 200_000 }, [
+        {
+          program: 'system',
+          type: 'transferSol',
+          source: 'sender111',
+          destination: TEMPORAL_ADDR,
+          lamports: 50_000n,
+        },
+      ]),
     ]
     const tips = detectTips(entries)
-    expect(tips).toEqual([
-      { provider: TipProvider.Temporal, lamports: 50_000n, recipient: TEMPORAL_ADDR },
-    ])
+    expect(tips).toEqual([{ provider: TipProvider.Temporal, lamports: 50_000n, recipient: TEMPORAL_ADDR }])
   })
 
   it('returns undefined when no tips found', () => {
@@ -169,9 +165,7 @@ describe('detectTipsFromRawInstructions', () => {
       data: makeTransferSolData(lamports),
     }
     const tips = detectTipsFromRawInstructions([instr], [])
-    expect(tips).toEqual([
-      { provider: TipProvider.Jito, lamports, recipient: JITO_ADDR },
-    ])
+    expect(tips).toEqual([{ provider: TipProvider.Jito, lamports, recipient: JITO_ADDR }])
   })
 
   it('detects a tip from a compiled system instruction', () => {
@@ -183,9 +177,7 @@ describe('detectTipsFromRawInstructions', () => {
       data: makeTransferSolData(lamports),
     }
     const tips = detectTipsFromRawInstructions([instr], fullKeys)
-    expect(tips).toEqual([
-      { provider: TipProvider.ZeroSlot, lamports, recipient: ZEROSLOT_ADDR },
-    ])
+    expect(tips).toEqual([{ provider: TipProvider.ZeroSlot, lamports, recipient: ZEROSLOT_ADDR }])
   })
 
   it('returns undefined for non-tip transfer', () => {

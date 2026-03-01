@@ -17,7 +17,7 @@ function readU64(data: Uint8Array, offset: number): bigint {
 }
 
 function readPubkey(data: Uint8Array, offset: number): string {
-  return encodeBase58(data.slice(offset, offset + 32))
+  return encodeBase58(data.subarray(offset, offset + 32))
 }
 
 export function decodeTokenInstruction(
