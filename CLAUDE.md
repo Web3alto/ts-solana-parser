@@ -124,6 +124,23 @@ Registry (`registry.ts`) maps program ID → parser. `tryParseInstruction()` dec
 - `POOL_ACCOUNT_INDEX` — Which account index holds the pool address per protocol
 - `SOL_MINT` / `WSOL_MINT` — Native SOL and wrapped SOL mint addresses
 
+## Versioning
+
+Follows semver. Version lives in `package.json` and is tracked via git tags (`v0.4.5`, etc.).
+
+**Bump rules based on commit impact:**
+- **Minor bump** (`0.x.0`) — New capability, major refactor, or new public API surface
+- **Patch bump** (`0.0.x`) — Bug fixes, small improvements, tooling, docs, tests
+- **Skip numbers** when a commit's impact is significantly larger than a typical patch (e.g., 6 protocol parsers at once → skip from `0.0.3` to `0.0.5`)
+
+**When committing:** Always update the version in `package.json` and tag the commit with `git tag v<version>`. Push tags with `git push --tags`.
+
+**Milestone versions:**
+- `0.1.0` — First working parser (can parse a swap end-to-end)
+- `0.2.0` — Real-time WebSocket streaming
+- `0.3.0` — Parser refactored into submodules + strict TypeScript
+- `0.4.0` — Zod-validated public API with barrel export
+
 ## Conventions
 
 - All amounts are computed from pre/post token balance diffs, not instruction args
