@@ -242,7 +242,7 @@ describe('parseTransactionDetailed', () => {
     const outcome = parseTransactionDetailed(notification)
     expect(outcome.kind).toBe('swap')
     expect(outcome.swap?.routeType).toBe('multi-hop')
-    expect(outcome.swap?.warnings).toContain('multi-hop-route')
+    expect(outcome.swap?.warnings).toContain('MULTI_HOP_ROUTE')
   })
 
   test('flags IDL vs balance mismatches with Token-2022 awareness', () => {
@@ -312,14 +312,14 @@ describe('parseTransactionDetailed', () => {
 
     const outcome = parseTransactionDetailed(notification, {
       resolveMintTokenProgram: (targetMint) => (targetMint === mint ? 'token-2022' : 'spl-token'),
-      resolveToken2022TransferFeeBps: () => 50,
     })
 
     expect(outcome.kind).toBe('swap')
-    expect(outcome.swap?.warnings).toContain('idl-balance-amount-mismatch')
-    expect(outcome.swap?.warnings).toContain('possible-token2022-transfer-fee')
+    expect(outcome.swap?.warnings).toContain('IDL_BALANCE_AMOUNT_MISMATCH')
+    expect(outcome.swap?.warnings).toContain('POSSIBLE_TOKEN2022_TRANSFER_FEE')
     expect(outcome.swap?.outputTokenProgram).toBe('token-2022')
-    expect(outcome.swap?.token2022TransferFeeBps).toBe(50)
+    expect(outcome.swap?.inputToken2022TransferFeeBps).toBeNull()
+    expect(outcome.swap?.outputToken2022TransferFeeBps).toBeNull()
   })
 
   test('anchors input/output mint selection to IDL when extra rebates exist', () => {

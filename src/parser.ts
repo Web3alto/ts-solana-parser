@@ -61,6 +61,10 @@ function makeOutcome(
   }
 }
 
+/**
+ * Parse a swap from a `TransactionNotification`. Validates with Zod internally.
+ * @returns Full {@link ParseOutcome} with diagnostic info (kind, warnings, errors).
+ */
 export function parseTransactionDetailed(
   notification: TransactionNotification,
   options?: ParserOptions,
@@ -112,7 +116,7 @@ export function parseTransactionDetailed(
           ? options.resolveAddressTableLookups(message.addressTableLookups)
           : null
       if (message.addressTableLookups?.length && !resolvedLookups && options?.resolveAddressTableLookups) {
-        warnings.push('alt-resolution-incomplete')
+        warnings.push('ALT_RESOLUTION_INCOMPLETE')
       }
       meta = normalizeMetaWithLookups(notification.transaction.meta, resolvedLookups)
 
@@ -151,7 +155,7 @@ export function parseTransactionDetailed(
 
     const state = buildOwnerTokenState(meta)
     if (state.malformedBalanceEntries > 0) {
-      warnings.push('malformed-balance-entries-skipped')
+      warnings.push('MALFORMED_BALANCE_ENTRIES_SKIPPED')
     }
     const idlCandidates = collectIdlCandidates(allInstructions, ctx)
     let hopCount = countRouteHops(idlCandidates)
@@ -159,16 +163,16 @@ export function parseTransactionDetailed(
       hopCount = protocols.length
     }
     const routeType: ParsedSwap['routeType'] = hopCount > 1 ? 'multi-hop' : 'single-hop'
-    if (routeType === 'multi-hop') warnings.push('multi-hop-route')
+    if (routeType === 'multi-hop') warnings.push('MULTI_HOP_ROUTE')
 
     const idlSelection = selectBestIdlCandidate(idlCandidates, state, feePayer)
     const selectedIdl = idlSelection && idlSelection.score >= 6 ? idlSelection : null
 
     if (idlSelection && idlSelection.confidence === 'low') {
-      warnings.push('low-confidence-idl-attribution')
+      warnings.push('LOW_CONFIDENCE_IDL_ATTRIBUTION')
     }
     if (idlSelection && !selectedIdl) {
-      warnings.push('idl-score-too-low-fallback-to-heuristic-user')
+      warnings.push('IDL_SCORE_TOO_LOW_FALLBACK_TO_HEURISTIC_USER')
     }
 
     const signerSet = buildSignerSet(message, feePayer)
@@ -211,24 +215,24 @@ export function parseTransactionDetailed(
       } else if (flipped) {
         swapType = selectedIdl.candidate.swap.type
       } else {
-        warnings.push('idl-mint-mismatch-with-balance-delta')
+        warnings.push('IDL_MINT_MISMATCH_WITH_BALANCE_DELTA')
       }
 
       const expectedInput = flipped ? selectedIdl.candidate.swap.amountTo : selectedIdl.candidate.swap.amountFrom
       const expectedOutput = flipped ? selectedIdl.candidate.swap.amountFrom : selectedIdl.candidate.swap.amountTo
       if (!approximatelyEqualBigInt(expectedInput, inputRaw) || !approximatelyEqualBigInt(expectedOutput, outputRaw)) {
-        warnings.push('idl-balance-amount-mismatch')
+        warnings.push('IDL_BALANCE_AMOUNT_MISMATCH')
       }
     }
 
     const tokenProgramInfo = resolveTokenPrograms(options, input.mint, output.mint)
-    if (warnings.includes('idl-balance-amount-mismatch')) {
+    if (warnings.includes('IDL_BALANCE_AMOUNT_MISMATCH')) {
       if (
         !options?.resolveMintTokenProgram ||
         tokenProgramInfo.inputTokenProgram === 'token-2022' ||
         tokenProgramInfo.outputTokenProgram === 'token-2022'
       ) {
-        warnings.push('possible-token2022-transfer-fee')
+        warnings.push('POSSIBLE_TOKEN2022_TRANSFER_FEE')
       }
     }
 
@@ -247,17 +251,14 @@ export function parseTransactionDetailed(
       inputAmountDecimal,
       inputAmountNumber: toApproxTokenAmountNumber(inputRaw, input.decimals),
       inputTokenProgram: tokenProgramInfo.inputTokenProgram,
-      inputToken2022TransferFeeBps:
-        tokenProgramInfo.inputTokenProgram === 'token-2022' ? tokenProgramInfo.token2022TransferFeeBps : null,
+      inputToken2022TransferFeeBps: null,
       outputMint: output.mint,
       outputRaw: outputRaw.toString(),
       outputDecimals: output.decimals,
       outputAmountDecimal,
       outputAmountNumber: toApproxTokenAmountNumber(outputRaw, output.decimals),
       outputTokenProgram: tokenProgramInfo.outputTokenProgram,
-      outputToken2022TransferFeeBps:
-        tokenProgramInfo.outputTokenProgram === 'token-2022' ? tokenProgramInfo.token2022TransferFeeBps : null,
-      token2022TransferFeeBps: tokenProgramInfo.token2022TransferFeeBps,
+      outputToken2022TransferFeeBps: null,
       tips,
       pool,
       swapType,
@@ -269,13 +270,14 @@ export function parseTransactionDetailed(
     return makeOutcome('swap', warnings, undefined, undefined, swap)
   } catch (err) {
     options?.onInternalError?.(err)
-    if (warnings.includes('malformed-balance-entries-skipped')) {
+    if (warnings.includes('MALFORMED_BALANCE_ENTRIES_SKIPPED')) {
       return makeOutcome('error', warnings, 'MALFORMED_BALANCE_DATA', String(err))
     }
     return makeOutcome('error', warnings, 'INTERNAL_ERROR', String(err))
   }
 }
 
+/** Parse a swap from a `TransactionNotification`. Validates with Zod internally. Returns `ParsedSwap | null`. */
 export function parseTransaction(notification: TransactionNotification, options?: ParserOptions): ParsedSwap | null {
   const outcome = parseTransactionDetailed(notification, options)
   return outcome.swap ?? null

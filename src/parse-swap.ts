@@ -12,6 +12,7 @@ import type {
   TransactionNotification,
 } from './types.ts'
 
+/** Convenience input type for the validated parsing API. Use when you don't have a full `TransactionNotification`. */
 export interface SwapInput {
   readonly transaction: TransactionData | EncodedTransactionTuple
   readonly meta: TransactionMeta
@@ -44,17 +45,24 @@ function tryValidateAndBuild(input: SwapInput): TransactionNotification | string
   }
 }
 
+/**
+ * Validate input with Zod and parse a single swap.
+ * @returns `ParsedSwap` or null if the transaction is not a swap.
+ * @throws {ValidationError} on invalid input.
+ */
 export function parseSwap(input: SwapInput, options?: ParserOptions): ParsedSwap | null {
   const notification = validateAndBuild(input)
   const outcome = parseTransactionDetailed(notification, options, undefined, true)
   return outcome.swap ?? null
 }
 
+/** Like {@link parseSwap} but returns a full {@link ParseOutcome} with warnings and error details. */
 export function parseSwapDetailed(input: SwapInput, options?: ParserOptions): ParseOutcome {
   const notification = validateAndBuild(input)
   return parseTransactionDetailed(notification, options, undefined, true)
 }
 
+/** Batch version of {@link parseSwap}. Pre-warms ALT caches. Returns index-correlated results. */
 export async function parseSwaps(
   inputs: readonly SwapInput[],
   options?: ParserOptions,
@@ -63,6 +71,7 @@ export async function parseSwaps(
   return outcomes.map((o) => o.swap ?? null)
 }
 
+/** Batch version of {@link parseSwapDetailed}. Invalid items produce error outcomes instead of throwing. */
 export async function parseSwapsDetailed(
   inputs: readonly SwapInput[],
   options?: ParserOptions,
@@ -105,6 +114,10 @@ export async function parseSwapsDetailed(
   })
 }
 
+/**
+ * Validate input, then return a fully decoded transaction with swap detection.
+ * @throws {ValidationError} on invalid input.
+ */
 export function parseFullSwapTransaction(input: SwapInput, options?: ParserOptions): FullTransactionResult | null {
   const notification = validateAndBuild(input)
   return parseFullTransaction(notification, options, true)

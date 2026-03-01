@@ -1,4 +1,4 @@
-// Core parsing (no validation -- use when you trust the input)
+// Public API — barrel exports
 
 // Constants
 export { Protocol, SOL_DECIMALS, SOL_MINT, TipProvider, WSOL_MINT } from './constants.ts'
@@ -22,6 +22,7 @@ export type { SwapInput } from './parse-swap.ts'
 export { parseFullSwapTransaction, parseSwap, parseSwapDetailed, parseSwaps, parseSwapsDetailed } from './parse-swap.ts'
 // Full transaction parsing (no validation -- use when you trust the input)
 export { parseFullTransaction } from './parse-transaction-full.ts'
+// Transaction parsing (validates with Zod internally)
 export { parseTransaction, parseTransactionDetailed } from './parser.ts'
 export type { ResolverConfig, RpcBackedParserOptions } from './resolvers.ts'
 // RPC resolver factory
@@ -38,10 +39,12 @@ export {
 } from './schemas.ts'
 // Types
 export type {
+  AccountKey,
   AddressLookupResolution,
   AddressTableLookup,
   CompiledInstruction,
   EncodedTransactionTuple,
+  InnerInstructionSet,
   Instruction,
   MevTip,
   ParseCode,

@@ -1,6 +1,15 @@
 # solana-swap-parser
 
-Solana transaction parser with full instruction decoding, DEX swap detection, and MEV tip identification. Decodes System, Token, Compute Budget, ATA, Memo, and 10 DEX protocol instructions. Built on `@solana/kit`.
+Solana transaction parser with full instruction decoding, DEX swap detection, and MEV tip identification. Supports 10 DEX protocols, 12 MEV tip providers, and 6 instruction programs. Built on `@solana/kit`.
+
+## Features
+
+- **Swap detection** across 10 DEX protocols with IDL-based instruction decoding
+- **Full transaction decoding** for System, Token, Token-2022, Compute Budget, ATA, and Memo programs
+- **MEV tip detection** across 12 providers (108 known tip addresses)
+- **Batch processing** with address lookup table pre-warming
+- **Input validation** via Zod schemas at API boundaries
+- **Confidence scoring** with diagnostic warnings for edge cases
 
 ## Install
 
@@ -8,79 +17,114 @@ Solana transaction parser with full instruction decoding, DEX swap detection, an
 bun add solana-swap-parser
 ```
 
-## Quick start
+> **Note:** This package ships TypeScript source and requires a runtime or bundler that handles `.ts` imports (e.g., Bun).
+
+## Quick Start
 
 ```ts
 import { parseSwap } from 'solana-swap-parser'
 
-const result = parseSwap({
+const swap = parseSwap({
   transaction: txResult.transaction,
   meta: txResult.meta,
   signature: 'your-tx-signature',
   slot: 123456,
 })
 
-if (result) {
-  console.log(result.swapType)          // "pumpfun-buy"
-  console.log(result.inputAmountDecimal) // "1.5"
-  console.log(result.outputMint)         // "TknMint..."
-  console.log(result.tips)              // [{ provider: "Jito", lamports: 10000n, recipient: "3AVi..." }]
+if (swap) {
+  console.log(swap.swapType)          // "pumpfun-buy"
+  console.log(swap.inputAmountDecimal) // "1.5"
+  console.log(swap.outputMint)         // "TknMint..."
+  console.log(swap.confidence)         // "high" | "medium" | "low"
 }
 ```
 
-## Supported protocols
+## Supported Protocols
 
-| Protocol | Program ID | File |
-|---|---|---|
-| **Pump** | | |
-| PumpFun | `6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P` | `pumpfun.ts` |
-| PumpSwap | `pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA` | `pumpswap.ts` |
-| **Raydium** | | |
-| Raydium AMM | `675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8` | `raydium-amm.ts` |
-| Raydium CPMM | `CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C` | `raydium-cpmm.ts` |
-| Raydium CLMM | `CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK` | `raydium-clmm.ts` |
-| Raydium LaunchLab | `LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj` | `raydium-launchlab.ts` |
-| **Meteora** | | |
-| Meteora DAMM | `Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB` | `meteora-damm.ts` |
-| Meteora DAMMv2 | `cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG` | `meteora-dammv2.ts` |
-| Meteora DBC | `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` | `meteora-dbc.ts` |
-| Meteora DLMM | `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo` | `meteora-dlmm.ts` |
+| Platform | Protocol | Program ID |
+|----------|----------|------------|
+| Pump | PumpFun | `6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P` |
+| Pump | PumpSwap | `pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA` |
+| Raydium | AMM v4 | `675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8` |
+| Raydium | CPMM | `CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C` |
+| Raydium | CLMM | `CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK` |
+| Raydium | LaunchLab | `LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj` |
+| Meteora | DAMM | `Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB` |
+| Meteora | DAMMv2 | `cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG` |
+| Meteora | DBC | `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` |
+| Meteora | DLMM | `LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo` |
 
-## MEV tip detection
+## MEV Tip Detection
 
-The parser detects SOL transfers to known MEV tip addresses and surfaces them as structured `MevTip` data on both `ParsedSwap` and `FullTransactionResult`.
+Detects SOL transfers to known MEV tip addresses across 12 providers:
 
-| Provider | Addresses |
-|---|---|
-| Jito | 8 |
-| Temporal | 17 |
-| NextBlock | 8 |
-| BloxRoute | 1 |
-| ZeroSlot | 11 |
-| BlockRazor | 14 |
-| Helius | 10 |
-| Astralane | 8 |
-| Stellium | 5 |
-| Flashblock | 10 |
-| Node1 | 6 |
-| Falcon | 10 |
+Jito, Temporal, NextBlock, BloxRoute, ZeroSlot, BlockRazor, Helius, Astralane, Stellium, Flashblock, Node1, Falcon
 
 ```ts
-import type { MevTip } from 'solana-swap-parser'
-
-// Available on both ParsedSwap and FullTransactionResult
-if (result.tips) {
-  for (const tip of result.tips) {
-    console.log(tip.provider)   // "Jito" | "Temporal" | "NextBlock" | ...
-    console.log(tip.lamports)   // bigint, e.g. 10000n
+if (swap?.tips) {
+  for (const tip of swap.tips) {
+    console.log(tip.provider)   // "Jito" | "Temporal" | ...
+    console.log(tip.lamports)   // bigint
     console.log(tip.recipient)  // tip account address
   }
 }
 ```
 
-## Full transaction parsing
+## API
 
-Parse every instruction in a transaction — not just swaps:
+### Validated API
+
+These functions validate input with Zod and throw `ValidationError` on malformed data.
+
+#### `parseSwap(input, options?)` → `ParsedSwap | null`
+
+Parse a single transaction for a swap. Returns `null` if not a swap.
+
+```ts
+import { parseSwap } from 'solana-swap-parser'
+
+const swap = parseSwap({
+  transaction: txData,   // TransactionData or [encoded, encoding] tuple
+  meta: txMeta,          // TransactionMeta from RPC
+  signature: 'sig...',   // optional, defaults to ""
+  slot: 12345,           // optional, defaults to 0
+  blockTime: 1700000000, // optional
+})
+```
+
+#### `parseSwapDetailed(input, options?)` → `ParseOutcome`
+
+Returns a detailed outcome with classification and diagnostics:
+
+```ts
+const outcome = parseSwapDetailed({ transaction, meta })
+
+switch (outcome.kind) {
+  case 'swap':        // outcome.swap is a ParsedSwap
+  case 'not_swap':    // not a swap (outcome.code explains why)
+  case 'unsupported': // encoding or version not supported
+  case 'error':       // internal error (outcome.errorMessage)
+}
+
+// Diagnostic warnings available on all outcomes
+console.log(outcome.warnings) // e.g. ['MULTI_HOP_ROUTE', 'IDL_BALANCE_AMOUNT_MISMATCH']
+```
+
+#### `parseSwaps(inputs, options?)` → `Promise<(ParsedSwap | null)[]>`
+
+Batch parsing with ALT pre-warming. One invalid item does not abort the batch. Results are index-correlated.
+
+```ts
+const results = await parseSwaps([input1, input2, input3], options)
+```
+
+#### `parseSwapsDetailed(inputs, options?)` → `Promise<ParseOutcome[]>`
+
+Batch version returning detailed outcomes. Invalid items produce `kind: 'error'` outcomes instead of throwing.
+
+#### `parseFullSwapTransaction(input, options?)` → `FullTransactionResult | null`
+
+Decode every instruction in a transaction, detect tips, and detect swaps:
 
 ```ts
 import { parseFullSwapTransaction } from 'solana-swap-parser'
@@ -94,9 +138,8 @@ const result = parseFullSwapTransaction({
 
 if (result) {
   for (const entry of result.instructions) {
-    const ix = entry.instruction
-    switch (ix.program) {
-      case 'system':       // transferSol, createAccount, assign, ...
+    switch (entry.instruction.program) {
+      case 'system':       // transferSol, createAccount, ...
       case 'spl-token':    // transfer, transferChecked, approve, burn, ...
       case 'token-2022':   // same variants as spl-token
       case 'compute-budget': // setComputeUnitLimit, setComputeUnitPrice
@@ -106,138 +149,102 @@ if (result) {
       case 'unknown':      // unrecognized program
     }
   }
-
-  // MEV tips detected across the entire transaction
-  if (result.tips) {
-    console.log(`${result.tips.length} tip(s) found`)
-  }
-
-  if (result.swap) {
-    console.log(result.swap.swapType) // swap detected within the transaction
-  }
+  console.log(result.tips)  // MEV tips
+  console.log(result.swap)  // ParsedSwap if detected
 }
 ```
 
-The unvalidated equivalent (`parseFullTransaction`) takes a `TransactionNotification` directly and skips Zod validation.
+### Unvalidated API
 
-## API Reference
-
-### Validated API (Zod validation at boundary)
-
-These functions validate input with Zod schemas and throw `ValidationError` on malformed data. Use for untrusted input.
-
-#### `parseSwap(input, options?)` → `ParsedSwap | null`
-
-Validates input, then parses. Returns `null` if not a swap.
-
-```ts
-import { parseSwap } from 'solana-swap-parser'
-
-const swap = parseSwap({
-  transaction: txData,   // TransactionData object or [encoded, encoding] tuple
-  meta: txMeta,          // TransactionMeta from RPC
-  signature: 'sig...',   // optional, defaults to ""
-  slot: 12345,           // optional, defaults to 0
-  blockTime: 1700000000, // optional
-})
-```
-
-#### `parseSwapDetailed(input, options?)` → `ParseOutcome`
-
-Same validation as `parseSwap`, but returns a detailed outcome with classification:
-
-```ts
-import { parseSwapDetailed } from 'solana-swap-parser'
-
-const outcome = parseSwapDetailed({ transaction, meta })
-
-switch (outcome.kind) {
-  case 'swap':        // outcome.swap is a ParsedSwap
-  case 'not_swap':    // not a swap (outcome.code explains why)
-  case 'unsupported': // encoding or version not supported
-  case 'error':       // internal error (outcome.errorMessage)
-}
-```
-
-#### `parseSwaps(inputs, options?)` → `Promise<(ParsedSwap | null)[]>`
-
-Batch version of `parseSwap`. Validates each input individually — one bad transaction does not abort the batch. Pre-warms address lookup tables across all transactions in a single call. Results are index-correlated: `results[i]` corresponds to `inputs[i]`.
-
-```ts
-import { parseSwaps } from 'solana-swap-parser'
-
-const results = await parseSwaps([input1, input2, input3], options)
-// results[0] → ParsedSwap | null for input1
-// results[1] → ParsedSwap | null for input2
-// ...
-```
-
-#### `parseSwapsDetailed(inputs, options?)` → `Promise<ParseOutcome[]>`
-
-Batch version of `parseSwapDetailed`. Same per-item error handling and ALT pre-warming as `parseSwaps`, but returns detailed outcomes.
-
-#### `parseFullSwapTransaction(input, options?)` → `FullTransactionResult | null`
-
-Validates input, decodes every instruction, detects MEV tips, and optionally detects a swap. Returns `null` if decoding fails entirely.
-
-### Unvalidated API (no Zod overhead)
-
-These functions take a `TransactionNotification` directly and skip Zod validation. Use when you trust the input (e.g., from your own RPC calls).
+These functions take a `TransactionNotification` directly and skip Zod validation. Use when you trust the input source.
 
 #### `parseTransaction(notification, options?)` → `ParsedSwap | null`
 
-Core swap parsing — no validation.
-
-```ts
-import { parseTransaction } from 'solana-swap-parser'
-
-const swap = parseTransaction({
-  signature: 'sig...',
-  slot: 12345,
-  transaction: { meta, transaction: txData },
-})
-```
-
 #### `parseTransactionDetailed(notification, options?)` → `ParseOutcome`
-
-Same as `parseTransaction` but returns a detailed outcome with `kind`, `code`, `warnings`, and optional `swap`.
 
 #### `parseFullTransaction(notification, options?)` → `FullTransactionResult | null`
 
-Full instruction decoding without Zod validation. Decodes every instruction, detects tips, and optionally detects a swap.
-
-### `ParserOptions`
-
-Optional callbacks for resolving address lookup tables and token programs:
-
-```ts
-interface ParserOptions {
-  resolveAddressTableLookups?: (lookups) => AddressLookupResolution | null
-  warmAddressLookupTables?: (tableAccounts: string[]) => Promise<void>
-  resolveMintTokenProgram?: (mint: string) => TokenProgramKind
-  resolveToken2022TransferFeeBps?: (mint: string) => number | null
-  onInternalError?: (error: unknown) => void
-  onResolverError?: (ctx: { tableAccount?: string; error: unknown }) => void
-}
-```
-
-### `createRpcBackedParserOptions(config)`
-
-Factory that creates `ParserOptions` with an RPC-backed address lookup table resolver. Handles caching, retries, and background refresh.
+### Options
 
 ```ts
 import { createRpcBackedParserOptions } from 'solana-swap-parser'
 
+// Quick setup with RPC-backed address lookup table resolution
 const options = createRpcBackedParserOptions({
   rpcUrl: process.env.RPC_URL!,
-  cacheTtlMs: 300_000,       // optional, default 5min
-  maxCacheEntries: 20_000,   // optional
-  requestTimeoutMs: 5_000,   // optional
-  retries: 2,                // optional
+  cacheTtlMs: 300_000,       // default: 5 min
+  maxCacheEntries: 20_000,   // default: 20,000
+  commitment: 'confirmed',   // default: "confirmed"
+  requestTimeoutMs: 5_000,   // default: 5,000ms
+  retries: 2,                // default: 2
+  retryBaseMs: 300,          // default: 300ms
 })
 ```
 
-## Output types
+Or configure manually:
+
+```ts
+import type { ParserOptions } from 'solana-swap-parser'
+
+const options: ParserOptions = {
+  resolveAddressTableLookups: (lookups) => myCache.resolve(lookups),
+  warmAddressLookupTables: (accounts) => myCache.warm(accounts),
+  resolveMintTokenProgram: (mint) => myTokenProgramMap.get(mint) ?? 'unknown',
+  onInternalError: (err) => console.error('Parser error:', err),
+  onResolverError: ({ tableAccount, error }) => console.warn('ALT error:', error),
+}
+```
+
+### Zod Schemas
+
+Exported for consumers who want to validate their own data:
+
+```ts
+import {
+  SwapInputSchema,
+  TransactionNotificationSchema,
+  TransactionResultSchema,
+  TransactionMetaSchema,
+  TokenBalanceSchema,
+} from 'solana-swap-parser'
+```
+
+## Types
+
+### `ParsedSwap`
+
+```ts
+interface ParsedSwap {
+  signature: string
+  slot: number
+  blockTime?: number
+  user: string                 // actual swapper (not always the fee payer)
+  feePayer: string
+  protocols: Protocol[]
+  hopCount?: number
+  routeType?: 'single-hop' | 'multi-hop'
+  inputMint: string
+  inputRaw: string             // exact amount in base units
+  inputDecimals: number
+  inputAmountDecimal: string   // human-readable decimal string
+  inputAmountNumber?: number   // approximate JS number (may lose precision)
+  inputTokenProgram?: TokenProgramKind
+  inputToken2022TransferFeeBps?: number | null
+  outputMint: string
+  outputRaw: string
+  outputDecimals: number
+  outputAmountDecimal: string
+  outputAmountNumber?: number
+  outputTokenProgram?: TokenProgramKind
+  outputToken2022TransferFeeBps?: number | null
+  tips?: MevTip[]
+  pool?: string
+  swapType?: SwapType          // e.g. "pumpfun-buy", "raydium-cpmm-sell"
+  confidence: 'high' | 'medium' | 'low'
+  warnings: WarningCode[]
+  fee: number                  // transaction fee in lamports
+}
+```
 
 ### `FullTransactionResult`
 
@@ -258,104 +265,42 @@ interface FullTransactionResult {
 }
 ```
 
-Each `DecodedInstructionEntry` contains an `index`, the decoded `instruction` (a discriminated union on `program`), and decoded `innerInstructions`.
-
-### `ParsedSwap`
-
-```ts
-interface ParsedSwap {
-  signature: string
-  slot: number
-  blockTime?: number
-  user: string              // actual swapper (not always fee payer)
-  feePayer: string
-  protocols: Protocol[]
-  hopCount?: number
-  routeType?: 'single-hop' | 'multi-hop'
-  inputMint: string
-  inputRaw: string          // exact integer in base units
-  inputDecimals: number
-  inputAmountDecimal: string
-  inputAmountNumber?: number
-  inputTokenProgram?: TokenProgramKind
-  inputToken2022TransferFeeBps?: number | null
-  outputMint: string
-  outputRaw: string
-  outputDecimals: number
-  outputAmountDecimal: string
-  outputAmountNumber?: number
-  outputTokenProgram?: TokenProgramKind
-  outputToken2022TransferFeeBps?: number | null
-  tips?: MevTip[]           // MEV tips detected in this transaction
-  pool?: string
-  swapType?: SwapType       // e.g. "pumpfun-buy", "raydium-cpmm-sell"
-  confidence: 'high' | 'medium' | 'low'
-  warnings: WarningCode[]
-  fee: number               // transaction fee in lamports
-}
-```
-
-### `MevTip`
-
-```ts
-interface MevTip {
-  provider: TipProvider     // "Jito" | "Temporal" | "NextBlock" | ...
-  lamports: bigint          // tip amount in lamports
-  recipient: string         // tip account address
-}
-```
-
 ### `ParseOutcome`
 
 ```ts
 interface ParseOutcome {
   kind: 'swap' | 'not_swap' | 'unsupported' | 'error'
-  code?: ParseCode
+  code?: ParseCode             // e.g. 'NO_PROTOCOL', 'DECODE_ERROR'
   swap?: ParsedSwap
-  warnings: WarningCode[]
+  warnings: WarningCode[]      // e.g. 'MULTI_HOP_ROUTE', 'IDL_BALANCE_AMOUNT_MISMATCH'
   errorMessage?: string
 }
 ```
 
-### Zod schemas
+## How It Works
 
-Exported for consumers who want to validate their own data:
-
-```ts
-import {
-  SwapInputSchema,
-  TransactionNotificationSchema,
-  TransactionResultSchema,
-  TransactionMetaSchema,
-  TokenBalanceSchema,
-} from 'solana-swap-parser'
-
-const validated = SwapInputSchema.parse(untrustedData)
-```
-
-## How it works
-
-1. **Normalize** — Accepts `jsonParsed`/`json` objects or `base58`/`base64`/`base64+zstd` encoded tuples, deserializing raw bytes when needed
-2. **Detect** — Scans top-level and inner instructions for known program IDs
-3. **IDL decode** — Matches 8-byte discriminators (`sha256("global:<method>")`) to extract swap direction and amounts
+1. **Normalize** — Accepts `jsonParsed`/`json` objects or `base58`/`base64`/`base64+zstd` encoded tuples, deserializing raw bytes via `@solana/kit`
+2. **Detect** — Scans top-level and inner instructions for known DEX program IDs
+3. **IDL decode** — Matches 8-byte discriminators (`sha256("global:<method>")`) to extract swap direction, amounts, and signer
 4. **User identification** — Finds the real swapper via IDL signer or token balance heuristics (not just the fee payer)
-5. **Balance diffs** — Computes pre/post token balance deltas, normalizes WSOL to SOL, and cross-validates against IDL results
+5. **Balance diffs** — Computes pre/post token balance deltas, normalizes WSOL to SOL, cross-validates against IDL results
 6. **Tip detection** — Identifies SOL transfers to 108 known MEV tip addresses across 12 providers
+7. **Confidence scoring** — Assigns high/medium/low confidence based on IDL score, emits diagnostic warnings
 
 ## Development
 
 ```bash
 bun install
 
-bun test                # run tests
-bun run typecheck       # typescript check
-bun run lint            # biome lint
-bun run format:check    # prettier check
-bun run verify          # all of the above
+bun test              # run tests (178 tests)
+bun run typecheck     # TypeScript check
+bun run lint          # Biome lint
+bun run format:check  # Prettier check
+bun run verify        # all of the above
 
-bun run bench           # benchmark (requires RPC_URL)
+bun run bench         # benchmark (requires RPC_URL)
 ```
 
 ## License
 
-MIT
+[MIT](LICENSE)

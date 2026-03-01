@@ -1,6 +1,6 @@
 {
   "name": "solana-swap-parser",
-  "version": "0.9.4",
+  "version": "1.0.0",
   "description": "Solana transaction parser with full instruction decoding and DEX swap detection for 10 protocols. Built on @solana/kit.",
   "module": "src/lib.ts",
   "types": "src/lib.ts",
@@ -41,5 +41,19 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "license": "MIT",
+  "author": "alto",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Web3alto/solana-parser-v2.git"
+  },
+  "homepage": "https://github.com/Web3alto/solana-parser-v2",
+  "bugs": {
+    "url": "https://github.com/Web3alto/solana-parser-v2/issues"
+  },
+  "keywords": ["solana", "parser", "swap", "dex", "transaction", "mev"],
+  "engines": {
+    "bun": ">=1.0.0"
   }
 }

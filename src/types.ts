@@ -2,6 +2,7 @@ import type { Protocol, TipProvider } from './constants.ts'
 
 // ── Transaction notification types ──
 
+/** Solana RPC transaction notification shape, as received from `transactionSubscribe` or `getTransaction`. */
 export interface TransactionNotification {
   signature: string
   slot: number
@@ -154,6 +155,7 @@ export interface TokenChange {
   readonly decimals: number
 }
 
+/** A fully parsed DEX swap with input/output amounts, protocols, and confidence scoring. */
 export interface ParsedSwap {
   readonly signature: string
   readonly slot: number
@@ -177,10 +179,6 @@ export interface ParsedSwap {
   readonly outputAmountNumber?: number | undefined
   readonly outputTokenProgram?: TokenProgramKind | undefined
   readonly outputToken2022TransferFeeBps?: number | null | undefined
-  /**
-   * Deprecated: use inputToken2022TransferFeeBps/outputToken2022TransferFeeBps.
-   */
-  readonly token2022TransferFeeBps?: number | null | undefined
   readonly tips?: readonly MevTip[] | undefined
   readonly pool?: string | undefined
   readonly swapType?: SwapType | undefined
@@ -213,17 +211,19 @@ export type ParseCode =
 
 export type ParseKind = 'swap' | 'not_swap' | 'unsupported' | 'error'
 
+/** Diagnostic warning codes emitted during parsing. SCREAMING_SNAKE_CASE constants. */
 export type WarningCode =
-  | 'malformed-balance-entries-skipped'
-  | 'multi-hop-route'
-  | 'low-confidence-idl-attribution'
-  | 'idl-score-too-low-fallback-to-heuristic-user'
-  | 'alt-resolution-incomplete'
-  | 'idl-mints-not-found-in-primary-deltas'
-  | 'idl-mint-mismatch-with-balance-delta'
-  | 'idl-balance-amount-mismatch'
-  | 'possible-token2022-transfer-fee'
+  | 'MALFORMED_BALANCE_ENTRIES_SKIPPED'
+  | 'MULTI_HOP_ROUTE'
+  | 'LOW_CONFIDENCE_IDL_ATTRIBUTION'
+  | 'IDL_SCORE_TOO_LOW_FALLBACK_TO_HEURISTIC_USER'
+  | 'ALT_RESOLUTION_INCOMPLETE'
+  | 'IDL_MINTS_NOT_FOUND_IN_PRIMARY_DELTAS'
+  | 'IDL_MINT_MISMATCH_WITH_BALANCE_DELTA'
+  | 'IDL_BALANCE_AMOUNT_MISMATCH'
+  | 'POSSIBLE_TOKEN2022_TRANSFER_FEE'
 
+/** Result of detailed swap parsing: kind (swap/not_swap/unsupported/error), optional swap, warnings, and error info. */
 export interface ParseOutcome {
   readonly kind: ParseKind
   readonly code?: ParseCode | undefined
@@ -232,11 +232,11 @@ export interface ParseOutcome {
   readonly errorMessage?: string | undefined
 }
 
+/** Configuration callbacks for address lookup resolution and token program detection. */
 export interface ParserOptions {
   resolveAddressTableLookups?: ((lookups: AddressTableLookup[]) => AddressLookupResolution | null) | undefined
   warmAddressLookupTables?: ((tableAccounts: string[]) => Promise<void>) | undefined
   resolveMintTokenProgram?: ((mint: string) => TokenProgramKind) | undefined
-  resolveToken2022TransferFeeBps?: ((mint: string) => number | null) | undefined
   onInternalError?: ((error: unknown) => void) | undefined
   onResolverError?: ((ctx: { tableAccount?: string | undefined; error: unknown }) => void) | undefined
 }

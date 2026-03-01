@@ -158,7 +158,7 @@ export function selectInputOutputChanges(
     // Fall through to heuristic with warning
     const input = inputs.reduce((a, b) => (a.rawDelta < b.rawDelta ? a : b))
     const output = outputs.reduce((a, b) => (a.rawDelta > b.rawDelta ? a : b))
-    return { input, output, warnings: ['idl-mints-not-found-in-primary-deltas'] }
+    return { input, output, warnings: ['IDL_MINTS_NOT_FOUND_IN_PRIMARY_DELTAS'] }
   }
 
   const input = inputs.reduce((a, b) => (a.rawDelta < b.rawDelta ? a : b))

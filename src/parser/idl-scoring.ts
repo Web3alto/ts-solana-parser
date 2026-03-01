@@ -122,21 +122,11 @@ export function resolveTokenPrograms(
 ): {
   inputTokenProgram?: TokenProgramKind | undefined
   outputTokenProgram?: TokenProgramKind | undefined
-  token2022TransferFeeBps?: number | null | undefined
 } {
   if (!options?.resolveMintTokenProgram) return {}
 
   const inputTokenProgram = options.resolveMintTokenProgram(inputMint)
   const outputTokenProgram = options.resolveMintTokenProgram(outputMint)
 
-  let token2022TransferFeeBps: number | null | undefined
-  if (options.resolveToken2022TransferFeeBps) {
-    if (inputTokenProgram === 'token-2022') {
-      token2022TransferFeeBps = options.resolveToken2022TransferFeeBps(inputMint)
-    } else if (outputTokenProgram === 'token-2022') {
-      token2022TransferFeeBps = options.resolveToken2022TransferFeeBps(outputMint)
-    }
-  }
-
-  return { inputTokenProgram, outputTokenProgram, token2022TransferFeeBps }
+  return { inputTokenProgram, outputTokenProgram }
 }

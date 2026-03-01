@@ -21,6 +21,10 @@ import type {
   TransactionNotification,
 } from './types.ts'
 
+/**
+ * Decode all instructions and detect swap without input validation.
+ * @returns Full decoded transaction or null on decode failure.
+ */
 export function parseFullTransaction(
   notification: TransactionNotification,
   options?: ParserOptions,
@@ -36,7 +40,8 @@ export function parseFullTransaction(
   let message: TransactionMessage
   try {
     ;({ message } = normalizeTransactionData(notification.transaction.transaction))
-  } catch {
+  } catch (err) {
+    options?.onInternalError?.(err)
     return null
   }
 
@@ -47,7 +52,10 @@ export function parseFullTransaction(
       : null
   const meta = normalizeMetaWithLookups(notification.transaction.meta, resolvedLookups)
   const fullKeys = buildFullAccountKeys(message, meta)
-  if (fullKeys.length === 0) return null
+  if (fullKeys.length === 0) {
+    options?.onInternalError?.(new Error('No account keys resolved from transaction'))
+    return null
+  }
 
   const feePayer = fullKeys[0]!
 

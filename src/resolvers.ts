@@ -25,6 +25,11 @@ interface AddressLookupCacheEntry {
   addresses: string[]
 }
 
+/**
+ * Configuration for the RPC-backed address lookup resolver.
+ * Defaults: cacheTtlMs=300000, maxCacheEntries=20000, commitment="confirmed",
+ * requestTimeoutMs=5000, retries=2, retryBaseMs=300.
+ */
 export interface ResolverConfig {
   rpcUrl: string
   cacheTtlMs?: number | undefined
@@ -37,6 +42,7 @@ export interface ResolverConfig {
   onError?: ((ctx: { tableAccount?: string | undefined; error: unknown }) => void) | undefined
 }
 
+/** Parser options with ALT warm-up capability for batch processing. */
 export interface RpcBackedParserOptions extends ParserOptions {
   warmAddressLookupTables: (tableAccounts: string[]) => Promise<void>
 }
@@ -243,6 +249,7 @@ const ResolverConfigSchema = z.object({
   retryBaseMs: z.number().positive().optional(),
 })
 
+/** Create {@link ParserOptions} with RPC-backed address lookup table resolution. Validates config with Zod. */
 export function createRpcBackedParserOptions(config: ResolverConfig): RpcBackedParserOptions {
   validateWithZod(ResolverConfigSchema, config)
   const resolver = new RpcAddressLookupResolver(config)

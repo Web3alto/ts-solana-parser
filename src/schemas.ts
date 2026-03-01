@@ -67,7 +67,10 @@ export const SwapInputSchema = z.object({
 
 export const SwapInputArraySchema = z.array(SwapInputSchema)
 
-/** Validate data against a Zod schema, converting ZodErrors to ValidationError. */
+/**
+ * Validate data against a Zod schema.
+ * @throws {ValidationError} (not raw ZodError) on failure.
+ */
 export function validateWithZod(schema: z.ZodType, data: unknown): void {
   try {
     schema.parse(data)

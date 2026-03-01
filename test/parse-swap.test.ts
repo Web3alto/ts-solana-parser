@@ -1,7 +1,13 @@
 import { describe, expect, mock, test } from 'bun:test'
 import { ValidationError } from '../src/errors.ts'
 import type { SwapInput } from '../src/parse-swap.ts'
-import { parseSwap, parseSwapDetailed, parseSwaps, parseSwapsDetailed } from '../src/parse-swap.ts'
+import {
+  parseFullSwapTransaction,
+  parseSwap,
+  parseSwapDetailed,
+  parseSwaps,
+  parseSwapsDetailed,
+} from '../src/parse-swap.ts'
 import { parseTransaction, parseTransactionDetailed } from '../src/parser.ts'
 import type { ParserOptions, TokenBalance, TransactionNotification } from '../src/types.ts'
 import { encodeIxData } from './helpers.ts'
@@ -484,5 +490,33 @@ describe('parseSwapsDetailed (batch)', () => {
     // Parsing still proceeds (may fail for other reasons, but not aborted by ALT error)
     expect(outcomes[0]!.kind).not.toBe('error')
     expect(errorFn).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ── Full transaction parsing ──
+
+describe('parseFullSwapTransaction', () => {
+  test('valid swap input returns FullTransactionResult with swap', () => {
+    const notification = buildPumpfunBuyNotification()
+    const input = notificationToSwapInput(notification)
+
+    const result = parseFullSwapTransaction(input)
+    expect(result).not.toBeNull()
+    expect(result!.signature).toBe('TestSig123')
+    expect(result!.slot).toBe(42)
+    expect(result!.instructions).toBeDefined()
+    expect(Array.isArray(result!.instructions)).toBe(true)
+    expect(result!.swap).toBeDefined()
+  })
+
+  test('invalid input throws ValidationError', () => {
+    const input = { meta: { fee: 'not a number' } } as unknown as SwapInput
+    expect(() => parseFullSwapTransaction(input)).toThrow(ValidationError)
+  })
+
+  test('non-swap transaction returns result with swap undefined', () => {
+    const result = parseFullSwapTransaction(NON_SWAP_INPUT)
+    expect(result).not.toBeNull()
+    expect(result!.swap).toBeUndefined()
   })
 })
