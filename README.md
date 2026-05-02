@@ -374,7 +374,8 @@ interface ParseOutcome {
 bun install
 
 bun test              # run tests (276 tests)
-bun run typecheck     # TypeScript check
+bun run typecheck     # TypeScript 7 native check via tsgo
+bun run typecheck:tsc # legacy TypeScript check for comparison/tooling
 bun run lint          # Biome lint
 bun run format:check  # Prettier check
 bun run verify        # all of the above

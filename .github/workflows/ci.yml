@@ -26,7 +26,7 @@ jobs:
           test -f dist/lib.js || (echo "dist/lib.js missing" && exit 1)
           test -f dist/lib.d.ts || (echo "dist/lib.d.ts missing" && exit 1)
 
-      - name: Typecheck
+      - name: Typecheck (tsgo)
         run: bun run typecheck
 
       - name: Lint
