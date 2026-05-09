@@ -1,5 +1,18 @@
 import type { SwapInput } from '../src/parse-swap.ts'
 import { parseSwap } from '../src/parse-swap.ts'
+import type { EncodedTransactionTuple, TransactionData, TransactionMeta } from '../src/types.ts'
+
+interface RpcTransactionResult {
+  transaction: TransactionData | EncodedTransactionTuple
+  meta: TransactionMeta
+  slot: number
+  blockTime?: number | null | undefined
+}
+
+interface RpcResponse {
+  result: RpcTransactionResult | null
+  error?: { code: number; message: string } | undefined
+}
 
 const sig = '4FUgVKAde24a7wc75fvGEeyMZbeG374AYBWmHDPH2TiMSYbPP9mGWTXmHsNNiNvQMJGa57kpxyFWeCvyhwmQ94T4'
 const rpcUrl = process.env.RPC_URL!
@@ -15,12 +28,13 @@ async function fetchTx(encoding: string) {
       params: [sig, { encoding, maxSupportedTransactionVersion: 0 }],
     }),
   })
-  const json = (await res.json()) as any
+  const json = (await res.json()) as RpcResponse
   if (json.error) throw new Error(`RPC error: ${JSON.stringify(json.error)}`)
+  if (!json.result) throw new Error('Transaction not found')
   return json.result
 }
 
-function buildSwapInput(result: any): SwapInput {
+function buildSwapInput(result: RpcTransactionResult): SwapInput {
   return {
     transaction: result.transaction,
     meta: result.meta,

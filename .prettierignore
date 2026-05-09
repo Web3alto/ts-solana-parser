@@ -1,7 +1,0 @@
-node_modules
-dist
-coverage
-bun.lock
-test/results/
-test/fixtures/
-*.json

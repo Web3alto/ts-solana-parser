@@ -1,41 +1,82 @@
-# dependencies (bun install)
-node_modules
+# dependencies
+node_modules/
+
+# package-manager caches
+.bun/
+.npm/
+.pnpm-store/
+.yarn/
 
 # output
-out
-dist
+out/
+dist/
+build/
+lib/
 *.tgz
+*.tar.gz
 
 # code coverage
-coverage
+coverage/
+.nyc_output/
 *.lcov
 
 # logs
-logs
-_.log
-report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+logs/
+*.log
+*.pid
+*.seed
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+bun-debug.log*
+bun-error.log*
+report.*.json
 
 # dotenv environment variable files
 .env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
+.env.*
+!.env.example
+!.env.sample
 
 # caches
 .eslintcache
-.cache
+.cache/
+.tsup/
+.vite/
+.parcel-cache/
+.turbo/
+.next/
+.nuxt/
+.svelte-kit/
 *.tsbuildinfo
 
-# IntelliJ based IDEs
-.idea
+# profiling / diagnostics
+isolate-*.log
+*.cpuprofile
+*.heapsnapshot
 
-# Finder (MacOS) folder config
+# temp files
+tmp/
+temp/
+.tmp/
+*.tmp
+
+# OS files
 .DS_Store
+Thumbs.db
 
 # editor/tool configs
-.cursor
-.claude
+.idea/
+.vscode/
+.cursor/
+.claude/
+.sc/
+.opencode/
+.history/
+*.swp
+*.swo
+*.bak
+*.orig
 
 # test generated data
 test/fixtures/

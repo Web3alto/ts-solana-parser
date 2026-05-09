@@ -1,7 +1,18 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.4/schema.json",
   "formatter": {
-    "enabled": false
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120
+  },
+  "javascript": {
+    "formatter": {
+      "arrowParentheses": "always",
+      "quoteStyle": "single",
+      "semicolons": "asNeeded",
+      "trailingCommas": "all"
+    }
   },
   "linter": {
     "enabled": true,
@@ -13,7 +24,7 @@
     }
   },
   "files": {
-    "includes": ["src/**/*.ts", "test/**/*.ts", "tools/**/*.ts"]
+    "includes": ["*.json", "src/**/*.ts", "test/**/*.ts", "tools/**/*.ts"]
   },
   "overrides": [
     {

@@ -10,6 +10,7 @@ Solana transaction parser with full instruction decoding, DEX swap detection, ag
 - **Full transaction decoding** for System, Token, Token-2022, Compute Budget, ATA, and Memo programs
 - **MEV tip detection** across 12 providers (108 known tip addresses)
 - **Batch processing** with address lookup table pre-warming
+- **Exact lamport handling** with bigint-backed parsing and string fee output
 - **Input validation** via Zod schemas at API boundaries
 - **Confidence scoring** with diagnostic warnings for edge cases
 
@@ -143,6 +144,12 @@ switch (outcome.kind) {
 console.log(outcome.warnings) // e.g. ['MULTI_HOP_ROUTE', 'IDL_BALANCE_AMOUNT_MISMATCH']
 ```
 
+### Lamport Precision
+
+Lamport fields accept safe JS numbers, unsigned decimal strings, or bigints. Use strings or bigints for values above `Number.MAX_SAFE_INTEGER`; unsafe numeric lamport values are rejected because JavaScript has already rounded them.
+
+`ParsedSwap.fee` and `FullTransactionResult.fee` are exact lamport strings.
+
 #### `parseSwaps(inputs, options?)` → `Promise<(ParsedSwap | null)[]>`
 
 Batch parsing with ALT pre-warming. One invalid item does not abort the batch. Results are index-correlated.
@@ -179,7 +186,7 @@ if (result) {
       case 'associated-token-account': // create, createIdempotent
       case 'memo':         // memo message
       case 'dex':          // DEX swap (11 protocols)
-      case 'aggregator':   // aggregator routing (Jupiter)
+      case 'aggregator':   // aggregator routing (Jupiter, Titan)
       case 'unknown':      // unrecognized program
     }
   }
@@ -279,7 +286,7 @@ import {
 } from 'ts-solana-parser'
 
 getSupportedProtocols()       // all detectable DEX protocols
-getSupportedAggregators()     // all detectable aggregators (e.g. "jupiter")
+getSupportedAggregators()     // all detectable aggregators (e.g. "jupiter", "titan")
 getSupportedTipProviders()    // all identifiable tip providers
 normalizeTransactionData(raw) // normalize raw RPC data for custom pipelines
 detectTipsFromRawInstructions(instructions, accounts) // standalone tip detection
@@ -323,7 +330,7 @@ interface ParsedSwap {
   swapType?: SwapType          // e.g. "pumpfun-buy", "raydium-cpmm-sell"
   confidence: 'high' | 'medium' | 'low'
   warnings: WarningCode[]
-  fee: number                  // transaction fee in lamports
+  fee: string                  // exact transaction fee in lamports
 }
 ```
 
@@ -335,7 +342,7 @@ interface FullTransactionResult {
   slot: number
   blockTime?: number
   version: 'legacy' | 0
-  fee: number
+  fee: string
   feePayer: string
   err: Record<string, unknown> | null
   computeUnitsConsumed?: number
@@ -353,7 +360,7 @@ interface ParseOutcome {
   kind: 'swap' | 'not_swap' | 'unsupported' | 'error'
   code?: ParseCode             // e.g. 'NO_PROTOCOL', 'DECODE_ERROR'
   swap?: ParsedSwap
-  warnings: WarningCode[]      // e.g. 'MULTI_HOP_ROUTE', 'IDL_BALANCE_AMOUNT_MISMATCH'
+  warnings: WarningCode[]      // e.g. 'MULTI_HOP_ROUTE', 'IDL_INPUT_AMOUNT_EXCEEDS_MAX'
   errorMessage?: string
 }
 ```
@@ -361,9 +368,9 @@ interface ParseOutcome {
 ## How It Works
 
 1. **Normalize** — Accepts `jsonParsed`/`json` objects or `base58`/`base64`/`base64+zstd` encoded tuples, deserializing raw bytes via `@solana/kit`
-2. **Detect** — Scans top-level and inner instructions for known DEX program IDs
-3. **IDL decode** — Matches 8-byte discriminators (`sha256("global:<method>")`) to extract swap direction, amounts, and signer
-4. **User identification** — Finds the real swapper via IDL signer or token balance heuristics (not just the fee payer)
+2. **Detect** — Scans top-level and inner instructions for discriminator-matched DEX swap instructions
+3. **IDL decode** — Matches 8-byte discriminators (`sha256("global:<method>")`) to extract swap direction, amount constraints, and signer
+4. **User identification** — Anchors the real swapper to the IDL signer (not just the fee payer)
 5. **Balance diffs** — Computes pre/post token balance deltas, normalizes WSOL to SOL, cross-validates against IDL results
 6. **Tip detection** — Identifies SOL transfers to 108 known MEV tip addresses across 12 providers
 7. **Confidence scoring** — Assigns high/medium/low confidence based on IDL score, emits diagnostic warnings
@@ -373,11 +380,11 @@ interface ParseOutcome {
 ```bash
 bun install
 
-bun test              # run tests (276 tests)
+bun test              # run tests (282 tests)
 bun run typecheck     # TypeScript 7 native check via tsgo
-bun run typecheck:tsc # legacy TypeScript check for comparison/tooling
+bun run typecheck:tsc # TypeScript 5 check for declaration/build tooling compatibility
 bun run lint          # Biome lint
-bun run format:check  # Prettier check
+bun run format:check  # Biome format check
 bun run verify        # all of the above
 
 bun run build         # compile ESM + .d.ts to dist/
