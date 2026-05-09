@@ -1,5 +1,6 @@
 import type { Aggregator } from './aggregators/constants.ts'
 import type { Protocol } from './constants.ts'
+import type { AmountConstraintKind } from './idl/types.ts'
 import type { MevTip, ParsedSwap, SwapType } from './types.ts'
 
 // ── System program ──
@@ -341,8 +342,10 @@ export type DexSwapInstruction = {
   type: SwapType
   tokenFrom: string
   amountFrom: bigint
+  amountFromKind?: AmountConstraintKind | undefined
   tokenTo: string
   amountTo: bigint
+  amountToKind?: AmountConstraintKind | undefined
   signer: string
   pool?: string | undefined
   protocol: Protocol
@@ -392,7 +395,8 @@ export interface FullTransactionResult {
   readonly slot: number
   readonly blockTime?: number | undefined
   readonly version: 'legacy' | 0
-  readonly fee: number
+  /** Exact transaction fee in lamports. */
+  readonly fee: string
   readonly feePayer: string
   readonly err: Readonly<Record<string, unknown>> | null
   readonly computeUnitsConsumed?: number | undefined

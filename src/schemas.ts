@@ -12,6 +12,12 @@ export const TokenBalanceSchema = z.object({
   }),
 })
 
+const LamportsSchema = z.union([
+  z.number().int().nonnegative().refine(Number.isSafeInteger, 'Lamport number exceeds Number.MAX_SAFE_INTEGER'),
+  z.string().regex(/^(0|[1-9]\d*)$/, 'Lamports must be a base-10 unsigned integer string'),
+  z.bigint().refine((value) => value >= 0n, 'Lamports must be non-negative'),
+])
+
 const InnerInstructionSetSchema = z.object({
   index: z.number(),
   instructions: z.array(z.unknown()),
@@ -19,9 +25,9 @@ const InnerInstructionSetSchema = z.object({
 
 export const TransactionMetaSchema = z.object({
   err: z.record(z.string(), z.unknown()).nullable(),
-  fee: z.number().nonnegative(),
-  preBalances: z.array(z.number()),
-  postBalances: z.array(z.number()),
+  fee: LamportsSchema,
+  preBalances: z.array(LamportsSchema),
+  postBalances: z.array(LamportsSchema),
   preTokenBalances: z.array(TokenBalanceSchema).nullish(),
   postTokenBalances: z.array(TokenBalanceSchema).nullish(),
   innerInstructions: z.array(InnerInstructionSetSchema).nullish(),

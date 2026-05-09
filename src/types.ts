@@ -18,16 +18,18 @@ export interface TransactionResult {
   transaction: TransactionData | EncodedTransactionTuple
 }
 
+export type LamportsInput = number | string | bigint
+
 export interface TransactionMeta {
   err: Readonly<Record<string, unknown>> | null
-  fee: number
+  fee: LamportsInput
   /**
    * Native SOL lamport balances per account index.
-   * Solana RPC returns these as JSON numbers; values above 2^53 (~90M SOL)
-   * would lose precision. Arithmetic in this codebase converts to BigInt first.
+   * Pass strings or bigints for values above `Number.MAX_SAFE_INTEGER`; unsafe
+   * JS numbers are rejected because their exact lamport value is already lost.
    */
-  preBalances: number[]
-  postBalances: number[]
+  preBalances: LamportsInput[]
+  postBalances: LamportsInput[]
   preTokenBalances?: TokenBalance[] | null | undefined
   postTokenBalances?: TokenBalance[] | null | undefined
   innerInstructions?: InnerInstructionSet[] | null | undefined
@@ -186,7 +188,8 @@ export interface ParsedSwap {
   readonly swapType?: SwapType | undefined
   readonly confidence: 'high' | 'medium' | 'low'
   readonly warnings: readonly WarningCode[]
-  readonly fee: number
+  /** Exact transaction fee in lamports. */
+  readonly fee: string
 }
 
 export type TokenProgramKind = 'spl-token' | 'token-2022' | 'unknown'
@@ -223,6 +226,8 @@ export type WarningCode =
   | 'IDL_MINTS_NOT_FOUND_IN_PRIMARY_DELTAS'
   | 'IDL_MINT_MISMATCH_WITH_BALANCE_DELTA'
   | 'IDL_BALANCE_AMOUNT_MISMATCH'
+  | 'IDL_INPUT_AMOUNT_EXCEEDS_MAX'
+  | 'IDL_OUTPUT_AMOUNT_BELOW_MIN'
   | 'POSSIBLE_TOKEN2022_TRANSFER_FEE'
 
 /** Result of detailed swap parsing: kind (swap/not_swap/unsupported/error), optional swap, warnings, and error info. */

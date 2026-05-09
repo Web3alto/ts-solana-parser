@@ -1,25 +1,17 @@
-import { decodeInstruction } from './decoders/registry.ts'
-import type { ParseContext } from './idl/types.ts'
 import type { DecodedInstruction, DecodedInstructionEntry, FullTransactionResult } from './instruction-types.ts'
 import { normalizeTransactionData } from './normalize.ts'
+import { buildFullAccountKeys, buildParseContext, normalizeMetaWithLookups } from './parser/accounts.ts'
 import {
-  buildFullAccountKeys,
-  buildParseContext,
-  getInstructionProgramId,
-  isCompiledInstruction,
-  isUnparsedInstruction,
-  normalizeMetaWithLookups,
-} from './parser/accounts.ts'
+  collectPreparedIdlCandidates,
+  decodePreparedInstruction,
+  prepareInstructions,
+  protocolsFromIdlCandidates,
+  type PreparedInstruction,
+} from './parser/prepared-instructions.ts'
 import { _parseTransactionWithPrepared } from './parser.ts'
 import { TransactionNotificationSchema, validateWithZod } from './schemas.ts'
 import { detectTips } from './tips.ts'
-import type {
-  CompiledInstruction,
-  Instruction,
-  ParserOptions,
-  TransactionMessage,
-  TransactionNotification,
-} from './types.ts'
+import type { ParserOptions, TransactionMessage, TransactionNotification } from './types.ts'
 
 /**
  * Decode all instructions and detect swap without input validation.
@@ -73,16 +65,19 @@ export function parseFullTransaction(
 
   // 5. Decode each top-level instruction
   const entries: DecodedInstructionEntry[] = []
+  const topLevelPrepared = prepareInstructions(message.instructions, fullKeys)
+  const allPrepared: PreparedInstruction[] = [...topLevelPrepared]
   for (let i = 0; i < message.instructions.length; i++) {
-    const instr = message.instructions[i]!
-    const decoded = decodeTopLevel(instr, fullKeys, ctx)
+    const decoded = decodePreparedInstruction(topLevelPrepared[i]!, ctx)
 
     // Collect inner instructions for this index
     const innerSet = innerByIndex.get(i)
     const innerDecoded: DecodedInstruction[] = []
     if (innerSet) {
-      for (const inner of innerSet.instructions) {
-        innerDecoded.push(decodeTopLevel(inner, fullKeys, ctx))
+      const innerPrepared = prepareInstructions(innerSet.instructions, fullKeys)
+      allPrepared.push(...innerPrepared)
+      for (const prepared of innerPrepared) {
+        innerDecoded.push(decodePreparedInstruction(prepared, ctx))
       }
     }
 
@@ -95,9 +90,23 @@ export function parseFullTransaction(
 
   // 6. Detect MEV tips
   const tips = detectTips(entries)
+  const idlCandidates = collectPreparedIdlCandidates(allPrepared, ctx)
+  const protocols = protocolsFromIdlCandidates(idlCandidates)
 
   // 7. Optionally detect swap (pass pre-computed ctx + tips to avoid redundant work)
-  const swap = _parseTransactionWithPrepared(message, meta, fullKeys, ctx, notification, options, tips) ?? undefined
+  const swap =
+    _parseTransactionWithPrepared(
+      message,
+      meta,
+      fullKeys,
+      ctx,
+      notification,
+      options,
+      tips,
+      allPrepared,
+      idlCandidates,
+      protocols,
+    ) ?? undefined
 
   const { logMessages, computeUnitsConsumed } = notification.transaction.meta
 
@@ -106,7 +115,7 @@ export function parseFullTransaction(
     slot: notification.slot,
     blockTime: notification.blockTime ?? undefined,
     version,
-    fee: meta.fee,
+    fee: meta.fee.toString(),
     feePayer,
     err: meta.err,
     computeUnitsConsumed: computeUnitsConsumed ?? undefined,
@@ -115,27 +124,4 @@ export function parseFullTransaction(
     tips,
     swap,
   }
-}
-
-function decodeTopLevel(instr: Instruction, fullKeys: string[], ctx: ParseContext): DecodedInstruction {
-  const programId = getInstructionProgramId(instr, fullKeys)
-  if (!programId) {
-    return { program: 'unknown', programId: '', accounts: [], data: '' }
-  }
-
-  if (isCompiledInstruction(instr)) {
-    const accounts = resolveCompiledAccounts(instr, fullKeys)
-    return decodeInstruction(programId, instr.data, accounts, ctx)
-  }
-
-  if (isUnparsedInstruction(instr)) {
-    return decodeInstruction(programId, instr.data, instr.accounts, ctx)
-  }
-
-  // Fallback for pre-parsed instructions (from jsonParsed encoding)
-  return { program: 'unknown', programId, accounts: [], data: '' }
-}
-
-function resolveCompiledAccounts(instr: CompiledInstruction, fullKeys: string[]): string[] {
-  return instr.accounts.map((idx) => fullKeys[idx] ?? '')
 }

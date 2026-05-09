@@ -97,7 +97,7 @@ function mockSwap(overrides?: Partial<ParsedSwap>): ParsedSwap {
     outputAmountDecimal: '1.0',
     confidence: 'high',
     warnings: [],
-    fee: 5000,
+    fee: '5000',
     ...overrides,
   }
 }

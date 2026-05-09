@@ -84,7 +84,7 @@ describe('parseFullSwapTransaction: non-swap transactions', () => {
     expect(result).not.toBeNull()
     expect(result!.signature).toBe('test-system-transfer-sig')
     expect(result!.slot).toBe(12345)
-    expect(result!.fee).toBe(5000)
+    expect(result!.fee).toBe('5000')
     expect(result!.feePayer).toBe(USER)
     expect(result!.err).toBeNull()
     expect(result!.version).toBe('legacy')
@@ -305,7 +305,7 @@ describe('parseFullSwapTransaction: swap transactions', () => {
     expect(result!.signature).toBe('full-pumpfun-buy-sig')
     expect(result!.slot).toBe(100)
     expect(result!.feePayer).toBe(USER)
-    expect(result!.fee).toBe(5000)
+    expect(result!.fee).toBe('5000')
     expect(result!.err).toBeNull()
 
     // Instructions decoded

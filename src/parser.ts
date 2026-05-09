@@ -1,6 +1,7 @@
 import { formatTokenAmountDecimal, toApproxTokenAmountNumber } from './amount.ts'
+import type { Protocol } from './constants.ts'
 import { DecodeError, UnsupportedEncodingError } from './errors.ts'
-import type { ParseContext } from './idl/types.ts'
+import type { AmountConstraintKind, ParseContext } from './idl/types.ts'
 import { normalizeTransactionData } from './normalize.ts'
 import type { NormalizedTransactionMeta } from './parser/accounts.ts'
 import {
@@ -18,17 +19,22 @@ import {
   normalizeMint,
   selectInputOutputChanges,
 } from './parser/balance.ts'
-import { detectAggregator, detectProtocols, extractPoolAddress } from './parser/detection.ts'
+import { detectAggregator, extractPoolAddress } from './parser/detection.ts'
 import {
   approximatelyEqualBigInt,
-  collectIdlCandidates,
   countRouteHops,
+  type IdlCandidate,
   resolveTokenPrograms,
   selectBestIdlCandidate,
 } from './parser/idl-scoring.ts'
-import { buildSignerSet, findSwapUser } from './parser/user.ts'
+import {
+  collectPreparedIdlCandidates,
+  prepareInstructions,
+  protocolsFromIdlCandidates,
+  type PreparedInstruction,
+} from './parser/prepared-instructions.ts'
 import { TransactionNotificationSchema, validateWithZod } from './schemas.ts'
-import { detectTipsFromRawInstructions } from './tips.ts'
+import { detectTipsFromPreparedInstructions } from './tips.ts'
 import type {
   Instruction,
   MevTip,
@@ -58,6 +64,30 @@ function makeOutcome(
   }
 }
 
+function validateAmountConstraint(
+  side: 'input' | 'output',
+  kind: AmountConstraintKind | undefined,
+  expected: bigint,
+  actual: bigint,
+): WarningCode | null {
+  switch (kind ?? 'exact') {
+    case 'exact':
+      return approximatelyEqualBigInt(expected, actual) ? null : 'IDL_BALANCE_AMOUNT_MISMATCH'
+    case 'max':
+      if (actual <= expected) return null
+      return side === 'input' ? 'IDL_INPUT_AMOUNT_EXCEEDS_MAX' : 'IDL_BALANCE_AMOUNT_MISMATCH'
+    case 'min':
+      if (actual >= expected) return null
+      return side === 'output' ? 'IDL_OUTPUT_AMOUNT_BELOW_MIN' : 'IDL_BALANCE_AMOUNT_MISMATCH'
+    case 'unknown':
+      return null
+  }
+}
+
+function pushUniqueWarning(warnings: WarningCode[], warning: WarningCode | null): void {
+  if (warning && !warnings.includes(warning)) warnings.push(warning)
+}
+
 /**
  * Parse a swap from a `TransactionNotification`. Validates with Zod internally.
  * @returns Full {@link ParseOutcome} with diagnostic info (kind, warnings, errors).
@@ -72,6 +102,9 @@ export function parseTransactionDetailed(
     fullKeys: string[]
     ctx?: ParseContext
     tips?: readonly MevTip[] | undefined
+    preparedInstructions?: readonly PreparedInstruction[] | undefined
+    idlCandidates?: readonly IdlCandidate[] | undefined
+    protocols?: readonly Protocol[] | undefined
   },
   /** @internal Skip Zod validation (caller already validated) */
   _skipValidation?: boolean,
@@ -83,6 +116,7 @@ export function parseTransactionDetailed(
   let fullKeys: string[]
   let allInstructions: Instruction[] | undefined
   let ctx: ParseContext | undefined = _prepared?.ctx
+  let preparedInstructions: readonly PreparedInstruction[] | undefined = _prepared?.preparedInstructions
 
   if (_prepared) {
     ;({ message, meta, fullKeys } = _prepared)
@@ -147,15 +181,18 @@ export function parseTransactionDetailed(
     const { signature, slot, blockTime } = notification
     if (!allInstructions) allInstructions = getAllInstructions(message, meta)
     if (!ctx) ctx = buildParseContext(meta, fullKeys)
-    const protocols = detectProtocols(allInstructions, fullKeys)
+    if (!preparedInstructions) preparedInstructions = prepareInstructions(allInstructions, fullKeys)
+    const idlCandidates = _prepared?.idlCandidates ?? collectPreparedIdlCandidates(preparedInstructions, ctx)
+    const protocols = _prepared?.protocols ?? protocolsFromIdlCandidates(idlCandidates)
     const routedVia = detectAggregator(message.instructions, fullKeys)
-    if (protocols.length === 0) return makeOutcome('not_swap', warnings, 'NO_SWAP_SIGNAL')
+    if (protocols.length === 0 || idlCandidates.length === 0) {
+      return makeOutcome('not_swap', warnings, 'NO_SWAP_SIGNAL')
+    }
 
     const state = buildOwnerTokenState(meta)
     if (state.malformedBalanceEntries > 0) {
       warnings.push('MALFORMED_BALANCE_ENTRIES_SKIPPED')
     }
-    const idlCandidates = collectIdlCandidates(allInstructions, ctx)
     let hopCount = countRouteHops(idlCandidates)
     if (hopCount === 1 && protocols.length > 1) {
       hopCount = protocols.length
@@ -172,9 +209,11 @@ export function parseTransactionDetailed(
     if (idlSelection && !selectedIdl) {
       warnings.push('IDL_SCORE_TOO_LOW_FALLBACK_TO_HEURISTIC_USER')
     }
+    if (!selectedIdl) {
+      return makeOutcome('not_swap', warnings, 'NO_SWAP_SIGNAL')
+    }
 
-    const signerSet = buildSignerSet(message, feePayer)
-    const user = selectedIdl?.candidate.swap.signer ?? findSwapUser(state, ctx.keyIndexMap, meta, feePayer, signerSet)
+    const user = selectedIdl.candidate.swap.signer
     if (!user) {
       return makeOutcome('not_swap', warnings, 'NO_USER_CANDIDATE')
     }
@@ -197,7 +236,7 @@ export function parseTransactionDetailed(
     for (const w of selectedPair.warnings) warnings.push(w)
 
     const pool = extractPoolAddress(allInstructions, fullKeys, protocols)
-    const tips = _prepared?.tips ?? detectTipsFromRawInstructions(allInstructions, fullKeys)
+    const tips = _prepared?.tips ?? detectTipsFromPreparedInstructions(preparedInstructions)
 
     const inputRaw = -input.rawDelta
     const outputRaw = output.rawDelta
@@ -218,9 +257,15 @@ export function parseTransactionDetailed(
 
       const expectedInput = flipped ? selectedIdl.candidate.swap.amountTo : selectedIdl.candidate.swap.amountFrom
       const expectedOutput = flipped ? selectedIdl.candidate.swap.amountFrom : selectedIdl.candidate.swap.amountTo
-      if (!approximatelyEqualBigInt(expectedInput, inputRaw) || !approximatelyEqualBigInt(expectedOutput, outputRaw)) {
-        warnings.push('IDL_BALANCE_AMOUNT_MISMATCH')
-      }
+      const expectedInputKind = flipped
+        ? selectedIdl.candidate.swap.amountToKind
+        : selectedIdl.candidate.swap.amountFromKind
+      const expectedOutputKind = flipped
+        ? selectedIdl.candidate.swap.amountFromKind
+        : selectedIdl.candidate.swap.amountToKind
+
+      pushUniqueWarning(warnings, validateAmountConstraint('input', expectedInputKind, expectedInput, inputRaw))
+      pushUniqueWarning(warnings, validateAmountConstraint('output', expectedOutputKind, expectedOutput, outputRaw))
     }
 
     const tokenProgramInfo = resolveTokenPrograms(options, input.mint, output.mint)
@@ -261,7 +306,7 @@ export function parseTransactionDetailed(
       swapType,
       confidence: selectedIdl?.confidence ?? 'medium',
       warnings,
-      fee: meta.fee,
+      fee: meta.fee.toString(),
     }
 
     return makeOutcome('swap', warnings, undefined, undefined, swap)
@@ -283,7 +328,19 @@ export function _parseTransactionWithPrepared(
   notification: TransactionNotification,
   options?: ParserOptions,
   tips?: readonly MevTip[] | undefined,
+  preparedInstructions?: readonly PreparedInstruction[] | undefined,
+  idlCandidates?: readonly IdlCandidate[] | undefined,
+  protocols?: readonly Protocol[] | undefined,
 ): ParsedSwap | null {
-  const outcome = parseTransactionDetailed(notification, options, { message, meta, fullKeys, ctx, tips })
+  const outcome = parseTransactionDetailed(notification, options, {
+    message,
+    meta,
+    fullKeys,
+    ctx,
+    tips,
+    preparedInstructions,
+    idlCandidates,
+    protocols,
+  })
   return outcome.swap ?? null
 }

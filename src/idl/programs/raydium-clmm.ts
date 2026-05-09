@@ -46,12 +46,20 @@ function parseInstruction(data: Uint8Array, accounts: string[], ctx?: ParseConte
 
   if (!inputMint || !outputMint) return null
 
+  // Full CLMM layout has is_base_input at byte 40. Older fixtures only include
+  // amount fields, so default those to exact-input semantics.
+  const isBaseInput = data.length <= 40 || data[40] !== 0
+  const amount = readU64LE(data, 8)
+  const otherAmountThreshold = readU64LE(data, 16)
+
   return {
     type: resolveDirection(inputMint, outputMint),
     tokenFrom: inputMint,
-    amountFrom: readU64LE(data, 8),
+    amountFrom: isBaseInput ? amount : otherAmountThreshold,
+    amountFromKind: isBaseInput ? 'exact' : 'max',
     tokenTo: outputMint,
-    amountTo: readU64LE(data, 16),
+    amountTo: isBaseInput ? otherAmountThreshold : amount,
+    amountToKind: isBaseInput ? 'min' : 'exact',
     signer,
   }
 }

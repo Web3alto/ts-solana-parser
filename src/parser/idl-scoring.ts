@@ -4,7 +4,7 @@ import type { Instruction, ParserOptions, TokenProgramKind } from '../types.ts'
 import { isCompiledInstruction, isUnparsedInstruction } from './accounts.ts'
 import { normalizeMint, type OwnerTokenState } from './balance.ts'
 
-interface IdlCandidate {
+export interface IdlCandidate {
   programId: string
   swap: RawSwap
 }
@@ -111,7 +111,7 @@ function scoreCandidate(candidate: IdlCandidate, state: OwnerTokenState, feePaye
  * Returns `null` if no candidates exist.
  */
 export function selectBestIdlCandidate(
-  candidates: IdlCandidate[],
+  candidates: readonly IdlCandidate[],
   state: OwnerTokenState,
   feePayer: string,
 ): IdlSelection | null {
@@ -130,7 +130,7 @@ export function selectBestIdlCandidate(
   return best
 }
 
-export function countRouteHops(candidates: IdlCandidate[]): number {
+export function countRouteHops(candidates: readonly IdlCandidate[]): number {
   if (candidates.length === 0) return 1
   const unique = new Set<string>()
   for (const c of candidates) {

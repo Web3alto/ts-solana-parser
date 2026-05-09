@@ -180,6 +180,43 @@ describe('ValidationError', () => {
     }
   })
 
+  test('throws for unsafe numeric lamport balances', () => {
+    const input: SwapInput = {
+      transaction: {
+        message: { accountKeys: ['11111111111111111111111111111111'], instructions: [], recentBlockhash: 'x' },
+        signatures: ['sig'],
+      },
+      meta: {
+        err: null,
+        fee: 5000,
+        preBalances: [Number.MAX_SAFE_INTEGER + 1],
+        postBalances: [0],
+      },
+    }
+
+    expect(() => parseSwap(input)).toThrow(ValidationError)
+  })
+
+  test('accepts exact lamport balances as strings', () => {
+    const input: SwapInput = {
+      transaction: {
+        message: { accountKeys: ['11111111111111111111111111111111'], instructions: [], recentBlockhash: 'x' },
+        signatures: ['sig'],
+      },
+      meta: {
+        err: null,
+        fee: '5000',
+        preBalances: ['9007199254740993'],
+        postBalances: ['9007199254735993'],
+        preTokenBalances: [],
+        postTokenBalances: [],
+        innerInstructions: [],
+      },
+    }
+
+    expect(parseSwapDetailed(input).kind).toBe('not_swap')
+  })
+
   test('thrown for non-numeric fee', () => {
     const input = {
       transaction: {

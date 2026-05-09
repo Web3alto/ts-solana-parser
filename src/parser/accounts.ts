@@ -1,4 +1,5 @@
 import type { ParseContext } from '../idl/types.ts'
+import { parseLamports, parseLamportsArray } from '../lamports.ts'
 import type {
   AccountKey,
   AddressLookupResolution,
@@ -11,10 +12,20 @@ import type {
   UnparsedInstruction,
 } from '../types.ts'
 
-export interface NormalizedTransactionMeta extends Omit<
-  TransactionMeta,
-  'preTokenBalances' | 'postTokenBalances' | 'innerInstructions' | 'loadedAddresses'
-> {
+export interface NormalizedTransactionMeta
+  extends Omit<
+    TransactionMeta,
+    | 'fee'
+    | 'preBalances'
+    | 'postBalances'
+    | 'preTokenBalances'
+    | 'postTokenBalances'
+    | 'innerInstructions'
+    | 'loadedAddresses'
+  > {
+  fee: bigint
+  preBalances: bigint[]
+  postBalances: bigint[]
   preTokenBalances: TokenBalance[]
   postTokenBalances: TokenBalance[]
   innerInstructions: InnerInstructionSet[]
@@ -41,9 +52,9 @@ export function normalizeMetaWithLookups(
 
   return {
     err: meta.err,
-    fee: meta.fee,
-    preBalances: meta.preBalances,
-    postBalances: meta.postBalances,
+    fee: parseLamports(meta.fee, 'fee'),
+    preBalances: parseLamportsArray(meta.preBalances, 'preBalances'),
+    postBalances: parseLamportsArray(meta.postBalances, 'postBalances'),
     preTokenBalances: meta.preTokenBalances ?? [],
     postTokenBalances: meta.postTokenBalances ?? [],
     innerInstructions: meta.innerInstructions ?? [],

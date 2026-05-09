@@ -15,7 +15,7 @@ import { tb } from './helpers.ts'
 function makeMinimalMeta(overrides: Partial<NormalizedTransactionMeta> = {}): NormalizedTransactionMeta {
   return {
     err: null,
-    fee: 5000,
+    fee: 5000n,
     preBalances: [],
     postBalances: [],
     preTokenBalances: [],
@@ -128,9 +128,9 @@ describe('computeTokenChanges', () => {
 describe('computeSolChange', () => {
   test('returns SOL change with fee adjustment for fee payer (index 0)', () => {
     const meta = makeMinimalMeta({
-      fee: 5000,
-      preBalances: [1_000_000_000, 500_000],
-      postBalances: [900_000_000, 500_000],
+      fee: 5000n,
+      preBalances: [1_000_000_000n, 500_000n],
+      postBalances: [900_000_000n, 500_000n],
     })
 
     const accountIndexMap = new Map<string, number>([
@@ -148,9 +148,9 @@ describe('computeSolChange', () => {
 
   test('returns null for zero delta (post-pre+feeAdjust = 0)', () => {
     const meta = makeMinimalMeta({
-      fee: 5000,
-      preBalances: [1_000_000, 500_000],
-      postBalances: [995_000, 500_000],
+      fee: 5000n,
+      preBalances: [1_000_000n, 500_000n],
+      postBalances: [995_000n, 500_000n],
     })
 
     const accountIndexMap = new Map<string, number>([
@@ -165,8 +165,8 @@ describe('computeSolChange', () => {
 
   test('returns null for unknown user', () => {
     const meta = makeMinimalMeta({
-      preBalances: [1_000_000],
-      postBalances: [900_000],
+      preBalances: [1_000_000n],
+      postBalances: [900_000n],
     })
 
     const accountIndexMap = new Map<string, number>([['FeePayer', 0]])

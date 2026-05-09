@@ -23,7 +23,7 @@ export function detectProtocols(allInstructions: Instruction[], fullKeys: string
 export function extractPoolAddress(
   allInstructions: Instruction[],
   fullKeys: string[],
-  protocols: Protocol[],
+  protocols: readonly Protocol[],
 ): string | undefined {
   for (const protocol of protocols) {
     const idx = POOL_ACCOUNT_INDEX[protocol]

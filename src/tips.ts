@@ -3,6 +3,7 @@ import { decodeSystemInstruction } from './decoders/system.ts'
 import { decodeBase58 } from './idl/codec.ts'
 import type { DecodedInstructionEntry } from './instruction-types.ts'
 import { getInstructionProgramId, isCompiledInstruction, isUnparsedInstruction } from './parser/accounts.ts'
+import { getPreparedData, type PreparedInstruction } from './parser/prepared-instructions.ts'
 import type { Instruction, MevTip } from './types.ts'
 
 function makeTip(destination: string, lamports: bigint): MevTip | undefined {
@@ -77,6 +78,30 @@ export function detectTipsFromRawInstructions(
     }
 
     const decoded = decodeSystemInstruction(data, accounts)
+    if (!decoded || decoded.type !== 'transferSol') continue
+
+    const tip = makeTip(decoded.destination, decoded.lamports)
+    if (tip) {
+      if (!tips) tips = []
+      tips.push(tip)
+    }
+  }
+
+  return tips
+}
+
+export function detectTipsFromPreparedInstructions(
+  preparedInstructions: readonly PreparedInstruction[],
+): MevTip[] | undefined {
+  let tips: MevTip[] | undefined
+
+  for (const prepared of preparedInstructions) {
+    if (prepared.programId !== SYSTEM_PROGRAM_ID) continue
+
+    const data = getPreparedData(prepared)
+    if (!data) continue
+
+    const decoded = decodeSystemInstruction(data, [...prepared.accounts])
     if (!decoded || decoded.type !== 'transferSol') continue
 
     const tip = makeTip(decoded.destination, decoded.lamports)

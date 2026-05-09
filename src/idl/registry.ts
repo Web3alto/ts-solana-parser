@@ -50,6 +50,18 @@ export function tryParseInstruction(
     return null
   }
 
+  return tryParseInstructionData(programId, accounts, data, ctx)
+}
+
+export function tryParseInstructionData(
+  programId: string,
+  accounts: string[],
+  data: Uint8Array,
+  ctx?: ParseContext,
+): RawSwap | null {
+  const parser = registry.get(programId)
+  if (!parser) return null
+
   try {
     return parser.parseInstruction(data, accounts, ctx)
   } catch {

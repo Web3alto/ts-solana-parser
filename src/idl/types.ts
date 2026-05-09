@@ -1,11 +1,15 @@
 import type { SwapType, TokenBalance } from '../types.ts'
 
+export type AmountConstraintKind = 'exact' | 'min' | 'max' | 'unknown'
+
 export interface RawSwap {
   type: SwapType
   tokenFrom: string
   amountFrom: bigint
+  amountFromKind?: AmountConstraintKind | undefined
   tokenTo: string
   amountTo: bigint
+  amountToKind?: AmountConstraintKind | undefined
   signer: string
 }
 

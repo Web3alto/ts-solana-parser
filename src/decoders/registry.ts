@@ -3,7 +3,7 @@ import { parseJupiterInstruction } from '../aggregators/jupiter.ts'
 import { parseTitanInstruction } from '../aggregators/titan.ts'
 import { POOL_ACCOUNT_INDEX, PROGRAM_ID_TO_PROTOCOL, SYSTEM_PROGRAM_ID } from '../constants.ts'
 import { decodeBase58 } from '../idl/codec.ts'
-import { tryParseInstruction } from '../idl/registry.ts'
+import { tryParseInstructionData } from '../idl/registry.ts'
 import type { ParseContext } from '../idl/types.ts'
 import type { DecodedInstruction, DexSwapInstruction, UnknownInstruction } from '../instruction-types.ts'
 import { decodeComputeBudgetInstruction } from './compute-budget.ts'
@@ -37,15 +37,32 @@ export function decodeInstruction(
   accounts: string[],
   ctx?: ParseContext,
 ): DecodedInstruction {
+  const hasDecoder =
+    NATIVE_DECODERS.has(programId) ||
+    Boolean(PROGRAM_ID_TO_PROTOCOL[programId as keyof typeof PROGRAM_ID_TO_PROTOCOL]) ||
+    Boolean(AGGREGATOR_PROGRAM_IDS[programId as keyof typeof AGGREGATOR_PROGRAM_IDS])
+  if (!hasDecoder) return makeUnknown(programId, accounts, dataBase58)
+
+  let data: Uint8Array
+  try {
+    data = decodeBase58(dataBase58)
+  } catch {
+    return makeUnknown(programId, accounts, dataBase58)
+  }
+
+  return decodeInstructionData(programId, dataBase58, data, accounts, ctx)
+}
+
+export function decodeInstructionData(
+  programId: string,
+  dataBase58: string,
+  data: Uint8Array,
+  accounts: string[],
+  ctx?: ParseContext,
+): DecodedInstruction {
   // 1. Check native decoder map
   const nativeDecoder = NATIVE_DECODERS.get(programId)
   if (nativeDecoder) {
-    let data: Uint8Array
-    try {
-      data = decodeBase58(dataBase58)
-    } catch {
-      return makeUnknown(programId, accounts, dataBase58)
-    }
     const result = nativeDecoder(programId, data, accounts)
     if (result) return result
     return makeUnknown(programId, accounts, dataBase58)
@@ -54,7 +71,7 @@ export function decodeInstruction(
   // 2. Check DEX IDL registry
   const protocol = PROGRAM_ID_TO_PROTOCOL[programId as keyof typeof PROGRAM_ID_TO_PROTOCOL]
   if (protocol) {
-    const rawSwap = tryParseInstruction(programId, accounts, dataBase58, ctx)
+    const rawSwap = tryParseInstructionData(programId, accounts, data, ctx)
     if (rawSwap) {
       const poolIndex = POOL_ACCOUNT_INDEX[protocol]
       const pool = poolIndex !== undefined ? accounts[poolIndex] : undefined
@@ -63,8 +80,10 @@ export function decodeInstruction(
         type: rawSwap.type,
         tokenFrom: rawSwap.tokenFrom,
         amountFrom: rawSwap.amountFrom,
+        amountFromKind: rawSwap.amountFromKind,
         tokenTo: rawSwap.tokenTo,
         amountTo: rawSwap.amountTo,
+        amountToKind: rawSwap.amountToKind,
         signer: rawSwap.signer,
         pool,
         protocol,
@@ -76,12 +95,6 @@ export function decodeInstruction(
   // 2.5. Check aggregator programs (e.g., Jupiter, Titan)
   const aggregatorName = AGGREGATOR_PROGRAM_IDS[programId as keyof typeof AGGREGATOR_PROGRAM_IDS]
   if (aggregatorName) {
-    let data: Uint8Array
-    try {
-      data = decodeBase58(dataBase58)
-    } catch {
-      return makeUnknown(programId, accounts, dataBase58)
-    }
     const parser = aggregatorName === 'jupiter' ? parseJupiterInstruction : parseTitanInstruction
     const parsed = parser(data, accounts)
     if (parsed) {

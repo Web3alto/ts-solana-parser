@@ -14,6 +14,7 @@ const METEORA_DAMMV2_PROGRAM = 'cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG'
 const METEORA_DLMM_PROGRAM = 'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'
 const RAYDIUM_AMM_PROGRAM = '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8'
 const METEORA_DAMM_PROGRAM = 'Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB'
+const ORCA_WHIRLPOOL_PROGRAM = 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc'
 
 describe('IDL registry', () => {
   test('parses PumpFun buy', () => {
@@ -405,6 +406,28 @@ describe('IDL registry', () => {
     expect(parsed?.signer).toBe(signer)
   })
 
+  test('parses Raydium CLMM swap_v2 exact-output constraints', () => {
+    const SWAP_V2_DISC = [43, 4, 237, 11, 26, 201, 30, 98] as const
+    const signer = 'User111111111111111111111111111111111111111'
+    const inputMint = 'Input111111111111111111111111111111111111111'
+    const outputMint = 'Output11111111111111111111111111111111111111'
+    const accounts = new Array<string>(13).fill('x')
+    accounts[0] = signer
+    accounts[11] = inputMint
+    accounts[12] = outputMint
+    const data = encodeBase58(
+      Uint8Array.from([...SWAP_V2_DISC, ...u64le(500n), ...u64le(750n), ...new Array<number>(16).fill(0), 0]),
+    )
+
+    const parsed = tryParseInstruction(RAYDIUM_CLMM_PROGRAM, accounts, data)
+
+    expect(parsed).not.toBeNull()
+    expect(parsed?.amountFrom).toBe(750n)
+    expect(parsed?.amountFromKind).toBe('max')
+    expect(parsed?.amountTo).toBe(500n)
+    expect(parsed?.amountToKind).toBe('exact')
+  })
+
   test('parses Raydium CLMM deprecated swap via balance context', () => {
     const SWAP_DISC = [248, 198, 158, 145, 225, 117, 135, 200] as const
     const signer = 'User111111111111111111111111111111111111111'
@@ -429,6 +452,39 @@ describe('IDL registry', () => {
     expect(parsed?.tokenTo).toBe(tokenMint)
     expect(parsed?.amountFrom).toBe(1_500_000_000n)
     expect(parsed?.amountTo).toBe(75_000n)
+    expect(parsed?.signer).toBe(signer)
+  })
+
+  test('parses Orca Whirlpool swap_v2 exact-output constraints', () => {
+    const SWAP_V2_DISC = [43, 4, 237, 11, 26, 201, 30, 98] as const
+    const signer = 'User111111111111111111111111111111111111111'
+    const inputMint = WSOL_MINT
+    const outputMint = 'Output11111111111111111111111111111111111111'
+    const accounts = new Array<string>(15).fill('x')
+    accounts[3] = signer
+    accounts[5] = inputMint
+    accounts[6] = outputMint
+    const data = encodeBase58(
+      Uint8Array.from([
+        ...SWAP_V2_DISC,
+        ...u64le(500n),
+        ...u64le(750n),
+        ...new Array<number>(16).fill(0),
+        0, // amount_specified_is_input = false => exact output
+        1, // a_to_b = true
+      ]),
+    )
+
+    const parsed = tryParseInstruction(ORCA_WHIRLPOOL_PROGRAM, accounts, data)
+
+    expect(parsed).not.toBeNull()
+    expect(parsed?.type).toBe('orca-whirlpool-buy')
+    expect(parsed?.tokenFrom).toBe(inputMint)
+    expect(parsed?.amountFrom).toBe(750n)
+    expect(parsed?.amountFromKind).toBe('max')
+    expect(parsed?.tokenTo).toBe(outputMint)
+    expect(parsed?.amountTo).toBe(500n)
+    expect(parsed?.amountToKind).toBe('exact')
     expect(parsed?.signer).toBe(signer)
   })
 

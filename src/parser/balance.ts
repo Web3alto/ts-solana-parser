@@ -91,8 +91,8 @@ export function computeSolChange(
   const post = meta.postBalances[userIdx]
   if (pre === undefined || post === undefined) return null
 
-  const feeAdjust = userIdx === 0 ? BigInt(meta.fee) : 0n
-  const trueDelta = BigInt(post) - BigInt(pre) + feeAdjust
+  const feeAdjust = userIdx === 0 ? meta.fee : 0n
+  const trueDelta = post - pre + feeAdjust
   if (trueDelta === 0n) return null
 
   return { mint: SOL_MINT, rawDelta: trueDelta, decimals: SOL_DECIMALS }

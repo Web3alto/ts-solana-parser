@@ -58,13 +58,24 @@ function resolveDirection(inputMint: string, outputMint: string): 'orca-whirlpoo
   return 'orca-whirlpool-sell'
 }
 
-function buildRawSwap(data: Uint8Array, inputMint: string, outputMint: string, signer: string): RawSwap {
+function buildRawSwap(
+  data: Uint8Array,
+  inputMint: string,
+  outputMint: string,
+  signer: string,
+  amountSpecifiedIsInput: boolean,
+): RawSwap {
+  const amount = readU64LE(data, 8)
+  const otherAmountThreshold = readU64LE(data, 16)
+
   return {
     type: resolveDirection(inputMint, outputMint),
     tokenFrom: inputMint,
-    amountFrom: readU64LE(data, 8),
+    amountFrom: amountSpecifiedIsInput ? amount : otherAmountThreshold,
+    amountFromKind: amountSpecifiedIsInput ? 'exact' : 'max',
     tokenTo: outputMint,
-    amountTo: readU64LE(data, 16),
+    amountTo: amountSpecifiedIsInput ? otherAmountThreshold : amount,
+    amountToKind: amountSpecifiedIsInput ? 'min' : 'exact',
     signer,
   }
 }
@@ -76,6 +87,7 @@ function parseSwap(data: Uint8Array, accounts: string[], ctx?: ParseContext): Ra
   const signer = accounts[1] // token_authority
   if (!signer) return null
 
+  const amountSpecifiedIsInput = data[40] !== 0
   const aToB = data[41] !== 0
 
   // Legacy swap: resolve mints from token owner accounts
@@ -90,7 +102,7 @@ function parseSwap(data: Uint8Array, accounts: string[], ctx?: ParseContext): Ra
   const inputMint = aToB ? mintA : mintB
   const outputMint = aToB ? mintB : mintA
 
-  return buildRawSwap(data, inputMint, outputMint, signer)
+  return buildRawSwap(data, inputMint, outputMint, signer, amountSpecifiedIsInput)
 }
 
 function parseSwapV2(data: Uint8Array, accounts: string[]): RawSwap | null {
@@ -101,11 +113,12 @@ function parseSwapV2(data: Uint8Array, accounts: string[]): RawSwap | null {
   const mintB = accounts[6] // token_mint_b
   if (!signer || !mintA || !mintB) return null
 
+  const amountSpecifiedIsInput = data[40] !== 0
   const aToB = data[41] !== 0
   const inputMint = aToB ? mintA : mintB
   const outputMint = aToB ? mintB : mintA
 
-  return buildRawSwap(data, inputMint, outputMint, signer)
+  return buildRawSwap(data, inputMint, outputMint, signer, amountSpecifiedIsInput)
 }
 
 function parseTwoHopSwap(data: Uint8Array, accounts: string[], ctx?: ParseContext): RawSwap | null {
@@ -115,6 +128,7 @@ function parseTwoHopSwap(data: Uint8Array, accounts: string[], ctx?: ParseContex
   const signer = accounts[1] // token_authority
   if (!signer) return null
 
+  const amountSpecifiedIsInput = data[24] !== 0
   const aToBOne = data[25] !== 0
   const aToBTwo = data[26] !== 0
 
@@ -130,7 +144,7 @@ function parseTwoHopSwap(data: Uint8Array, accounts: string[], ctx?: ParseContex
   const outputMint = ctx ? resolveMintForAccount(outputTokenAccount, ctx) : null
   if (!inputMint || !outputMint) return null
 
-  return buildRawSwap(data, inputMint, outputMint, signer)
+  return buildRawSwap(data, inputMint, outputMint, signer, amountSpecifiedIsInput)
 }
 
 function parseTwoHopSwapV2(data: Uint8Array, accounts: string[]): RawSwap | null {
@@ -141,7 +155,7 @@ function parseTwoHopSwapV2(data: Uint8Array, accounts: string[]): RawSwap | null
   const outputMint = accounts[4] // token_mint_output
   if (!signer || !inputMint || !outputMint) return null
 
-  return buildRawSwap(data, inputMint, outputMint, signer)
+  return buildRawSwap(data, inputMint, outputMint, signer, data[24] !== 0)
 }
 
 function parseInstruction(data: Uint8Array, accounts: string[], ctx?: ParseContext): RawSwap | null {
